@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "shiftly-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "shiftly-local",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-e", "process.loadEnvFile('.env.supabase-local'); require('child_process').spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', '3001'], { stdio: 'inherit' }).on('exit', (c) => process.exit(c ?? 0))"],
+      "port": 3001
+    }
+  ]
+}

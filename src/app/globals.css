@@ -1,0 +1,328 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-display);
+  --font-display: var(--font-hanken);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-overtime: var(--overtime);
+  --color-idle: var(--idle);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
+  --color-ink-muted: var(--ink-muted);
+  --color-brass-bright: var(--brass-bright);
+  /* Status colours dark enough (light mode) or light enough (dark mode) for text. */
+  --color-success-text: color-mix(in oklch, var(--success) 72%, var(--foreground));
+  --color-warning-text: color-mix(in oklch, var(--warning) 72%, var(--foreground));
+  --color-overtime-text: color-mix(in oklch, var(--overtime) 72%, var(--foreground));
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(0.975 0.006 85);
+  --foreground: oklch(0.2 0.012 60);
+  --card: oklch(0.993 0.003 85);
+  --card-foreground: oklch(0.2 0.012 60);
+  --popover: oklch(0.995 0.003 85);
+  --popover-foreground: oklch(0.2 0.012 60);
+  /* Brass: the one accent. Deeper in light mode so white text and links stay readable. */
+  --primary: oklch(0.55 0.1 68);
+  --primary-foreground: oklch(0.99 0.005 85);
+  --secondary: oklch(0.948 0.008 80);
+  --secondary-foreground: oklch(0.24 0.012 60);
+  --muted: oklch(0.948 0.008 80);
+  --muted-foreground: oklch(0.5 0.015 65);
+  --accent: oklch(0.94 0.028 80);
+  --accent-foreground: oklch(0.43 0.08 65);
+  --destructive: oklch(0.55 0.17 30);
+  --border: oklch(0.905 0.01 80);
+  --input: oklch(0.89 0.012 80);
+  --ring: oklch(0.7 0.11 75);
+  --chart-1: oklch(0.63 0.105 70);
+  --chart-2: oklch(0.56 0.065 160);
+  --chart-3: oklch(0.6 0.1 40);
+  --chart-4: oklch(0.52 0.06 250);
+  --chart-5: oklch(0.5 0.07 330);
+  --radius: 0.5rem;
+  /* Status colours for rings, bars and dots (worked vs set hours, who's in). */
+  --success: oklch(0.58 0.1 160);
+  --warning: oklch(0.68 0.13 55);
+  --info: oklch(0.58 0.07 230);
+  --overtime: oklch(0.52 0.07 260);
+  --idle: oklch(0.74 0.012 70);
+  /* How far the oldest day in a history strip fades toward the card. */
+  --history-fade: 55%;
+  /* The ink block (logo, wages headline): dark in both themes, with bright brass on top. */
+  --ink: oklch(0.21 0.012 60);
+  --ink-foreground: oklch(0.96 0.008 85);
+  --ink-muted: oklch(0.74 0.015 75);
+  --brass-bright: oklch(0.8 0.1 78);
+  /* Top-edge highlight on raised surfaces (only visible in dark mode). */
+  --surface-highlight: transparent;
+  --sidebar: oklch(0.962 0.008 82);
+  --sidebar-foreground: oklch(0.2 0.012 60);
+  --sidebar-primary: oklch(0.55 0.1 68);
+  --sidebar-primary-foreground: oklch(0.99 0.005 85);
+  --sidebar-accent: oklch(0.925 0.012 80);
+  --sidebar-accent-foreground: oklch(0.2 0.012 60);
+  --sidebar-border: oklch(0.905 0.01 80);
+  --sidebar-ring: oklch(0.7 0.11 75);
+}
+
+.dark {
+  --background: oklch(0.17 0.008 60);
+  --foreground: oklch(0.93 0.01 80);
+  --card: oklch(0.205 0.009 60);
+  --card-foreground: oklch(0.93 0.01 80);
+  --popover: oklch(0.23 0.01 60);
+  --popover-foreground: oklch(0.93 0.01 80);
+  --primary: oklch(0.79 0.1 78);
+  --primary-foreground: oklch(0.2 0.02 60);
+  --secondary: oklch(0.25 0.009 60);
+  --secondary-foreground: oklch(0.93 0.01 80);
+  --muted: oklch(0.25 0.009 60);
+  --muted-foreground: oklch(0.68 0.015 75);
+  --accent: oklch(0.27 0.022 70);
+  --accent-foreground: oklch(0.86 0.07 80);
+  --destructive: oklch(0.68 0.15 30);
+  --border: oklch(1 0 0 / 7%);
+  --input: oklch(1 0 0 / 11%);
+  --ring: oklch(0.79 0.1 78);
+  --chart-1: oklch(0.77 0.1 78);
+  --chart-2: oklch(0.7 0.075 160);
+  --chart-3: oklch(0.7 0.11 40);
+  --chart-4: oklch(0.7 0.06 250);
+  --chart-5: oklch(0.68 0.07 330);
+  --success: oklch(0.72 0.1 160);
+  --warning: oklch(0.76 0.12 60);
+  --info: oklch(0.72 0.07 230);
+  --overtime: oklch(0.72 0.07 260);
+  --idle: oklch(0.45 0.01 70);
+  --history-fade: 30%;
+  --surface-highlight: oklch(1 0 0 / 4%);
+  --ink: oklch(0.24 0.012 60);
+  --sidebar: oklch(0.155 0.008 60);
+  --sidebar-foreground: oklch(0.93 0.01 80);
+  --sidebar-primary: oklch(0.79 0.1 78);
+  --sidebar-primary-foreground: oklch(0.2 0.02 60);
+  --sidebar-accent: oklch(0.235 0.01 60);
+  --sidebar-accent-foreground: oklch(0.95 0.01 80);
+  --sidebar-border: oklch(1 0 0 / 6%);
+  --sidebar-ring: oklch(0.79 0.1 78);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+/* Soft tinted surfaces for status colours, readable in light and dark mode. */
+@utility tone-brass { background-color: color-mix(in oklch, var(--primary) 13%, transparent); color: var(--accent-foreground); }
+@utility tone-emerald { background-color: color-mix(in oklch, var(--success) 14%, transparent); color: var(--color-success-text); }
+@utility tone-amber { background-color: color-mix(in oklch, var(--warning) 16%, transparent); color: var(--color-warning-text); }
+@utility tone-rose { background-color: color-mix(in oklch, var(--destructive) 13%, transparent); color: var(--destructive); }
+@utility tone-sky { background-color: color-mix(in oklch, var(--info) 14%, transparent); color: color-mix(in oklch, var(--info) 72%, var(--foreground)); }
+@utility tone-zinc { background-color: var(--muted); color: var(--muted-foreground); }
+
+/* A raised surface without a border: a shade step from the page, plus a top-edge highlight in dark mode. */
+@utility surface {
+  background-color: var(--card);
+  box-shadow: inset 0 1px 0 var(--surface-highlight), 0 1px 2px color-mix(in oklch, var(--foreground) 4%, transparent);
+}
+
+/* Small-caps label: the quiet counterpart to big display numbers. */
+@utility eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* Units inside a measurement ("8h 45m", "£12.97"): smaller and quieter than the digits. */
+@utility unit {
+  font-size: 0.6em;
+  font-weight: 400;
+  margin-inline: 0.06em 0.12em;
+  color: var(--muted-foreground);
+}
+
+/* ------------------------------------------------------------------------
+   Motion. Kept for what carries meaning: the live timers, the clocked-in halo,
+   a scan that just arrived, and quick, unstaggered entrances.
+   Everything here is switched off for prefers-reduced-motion.
+   ------------------------------------------------------------------------ */
+:root {
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Entrance for panels, cards and list items. */
+@utility rise-in {
+  animation: rise-in 250ms var(--ease-out) backwards;
+  @media (prefers-reduced-motion: reduce) { animation: none; }
+}
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(4px); }
+}
+
+/* A soft halo around someone who is clocked in. */
+@utility breathe {
+  border-radius: 9999px;
+  animation: breathe 2.6s ease-in-out infinite;
+  @media (prefers-reduced-motion: reduce) { animation: none; }
+}
+@keyframes breathe {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--success) 35%, transparent); }
+  50% { box-shadow: 0 0 0 7px transparent; }
+}
+
+/* Highlight that fades out, for something that just arrived. */
+@utility flash {
+  animation: flash 2.4s ease-out both;
+  @media (prefers-reduced-motion: reduce) { animation: none; }
+}
+@keyframes flash {
+  0%, 30% { background-color: color-mix(in oklch, var(--primary) 14%, transparent); }
+  100% { background-color: transparent; }
+}
+
+/* Hover for clickable cards: a hairline appears, nothing moves. */
+@utility hoverable {
+  transition: outline-color 150ms;
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+  &:hover { outline-color: color-mix(in oklch, var(--foreground) 14%, transparent); }
+}
+
+/* ---------- View transitions (route changes, live updates) ---------- */
+
+/* Only the named regions below animate; the rest of the page swaps instantly. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* Page content: quick fade out, then the new page rises in. */
+::view-transition-old(.page-exit) {
+  animation: 140ms ease-out both vt-fade-out;
+}
+::view-transition-new(.page-enter) {
+  animation: 250ms var(--ease-out) 40ms both vt-rise-in;
+}
+
+/* Sidebar active marker slides between items. */
+::view-transition-group(.indicator) {
+  animation-duration: 250ms;
+  animation-timing-function: var(--ease-out);
+}
+
+/* Avatar flies from the employee list into the profile header. */
+::view-transition-group(.morph) {
+  animation-duration: 420ms;
+  animation-timing-function: var(--ease-out);
+}
+
+/* Cards and list items that move, appear or disappear on a live update. */
+::view-transition-group(.item) {
+  animation-duration: 420ms;
+  animation-timing-function: var(--ease-out);
+}
+::view-transition-new(.item):only-child {
+  animation: 360ms var(--ease-out) both vt-pop-in;
+}
+::view-transition-old(.item):only-child {
+  animation: 180ms ease-out both vt-fade-out;
+}
+
+@keyframes vt-fade-out {
+  to { opacity: 0; }
+}
+@keyframes vt-rise-in {
+  from { opacity: 0; transform: translateY(4px); }
+}
+@keyframes vt-pop-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* Secondary row actions: always visible on touch screens, revealed on hover/focus with a mouse. */
+@utility reveal {
+  @media (hover: hover) {
+    opacity: 0;
+    transition: opacity 150ms;
+    :where(.group\/row:hover, .group\/row:focus-within) & { opacity: 1; }
+    &:focus-visible, &[aria-expanded="true"] { opacity: 1; }
+  }
+}
+
+/* Numbered setup steps with round counters. */
+@utility steps {
+  counter-reset: step;
+  & > li { position: relative; padding-left: 2.25rem; counter-increment: step; }
+  & > li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: -0.1rem;
+    display: flex; align-items: center; justify-content: center;
+    width: 1.5rem; height: 1.5rem; border-radius: 9999px;
+    font-size: 0.75rem; font-weight: 600;
+    color: var(--primary);
+    background: color-mix(in oklch, var(--primary) 12%, transparent);
+  }
+}

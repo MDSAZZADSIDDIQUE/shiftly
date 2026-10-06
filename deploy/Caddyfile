@@ -1,0 +1,18 @@
+# Manager dashboard. With a domain in SITE_ADDRESS (e.g. shiftly.example.co.uk or
+# 141-147-1-2.sslip.io) Caddy gets a free HTTPS certificate automatically.
+# With SITE_ADDRESS=:80 it serves plain HTTP (OK for a quick demo only).
+{$SITE_ADDRESS} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}
+
+# Fingerprint terminals. Many ZKTeco models only speak plain HTTP, so they get
+# their own port that exposes nothing but the /iclock push endpoints.
+:8080 {
+	handle /iclock/* {
+		reverse_proxy app:3000
+	}
+	handle {
+		respond 404
+	}
+}
