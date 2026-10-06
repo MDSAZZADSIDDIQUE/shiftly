@@ -124,7 +124,7 @@ export function AppShell({
   const pathname = usePathname()
   return (
     <div className="flex min-h-svh">
-      <aside className="sticky top-0 hidden h-svh w-64 shrink-0 flex-col gap-7 border-r bg-sidebar px-4 py-5 lg:flex">
+      <aside className="dark sidebar-ink sticky top-0 hidden h-svh w-64 shrink-0 flex-col gap-7 border-r bg-sidebar px-4 py-5 text-sidebar-foreground lg:flex">
         <Brand storeName={storeName} />
         <div className="flex-1">
           <NavLinks counts={counts} animated />
@@ -143,7 +143,7 @@ export function AppShell({
           </div>
         </header>
         <Sheet open={open} onOpenChange={setOpen}>
-          <SheetContent side="left" className="flex w-72 flex-col gap-7 px-4 py-5">
+          <SheetContent side="left" className="dark sidebar-ink flex w-72 flex-col gap-7 bg-sidebar px-4 py-5 text-sidebar-foreground">
             <SheetTitle className="sr-only">Menu</SheetTitle>
             <Brand storeName={storeName} />
             <div className="flex-1">

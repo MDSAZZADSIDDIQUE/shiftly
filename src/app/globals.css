@@ -155,6 +155,13 @@
   --sidebar-ring: oklch(0.79 0.1 78);
 }
 
+/* Light theme: the sidebar is an ink panel, the same black as the wages headline (light --ink). It also carries
+   the `dark` class so everything inside uses the dark colours; in the dark theme it stays the regular sidebar. */
+:root:not(.dark) .sidebar-ink {
+  --sidebar: oklch(0.21 0.012 60);
+  --sidebar-accent: oklch(0.29 0.012 60);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
