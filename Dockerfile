@@ -11,12 +11,15 @@ WORKDIR /app
 # NEXT_PUBLIC_* values are baked into the browser bundle at build time.
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ARG NEXT_PUBLIC_STORE_NAME
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY \
+    NEXT_PUBLIC_STORE_NAME=$NEXT_PUBLIC_STORE_NAME \
     NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+# The project has no public/ folder yet; make sure the copy below has one.
+RUN mkdir -p public && npm run build
 
 FROM node:24-alpine AS run
 WORKDIR /app

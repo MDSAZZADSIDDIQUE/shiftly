@@ -9,7 +9,7 @@ This repo is the **manager web app**. The employee mobile app comes later and wi
 - **Next.js 16** (App Router, Server Actions) + **Tailwind CSS 4** + **shadcn/ui** (Base UI) + **Recharts**
 - **Supabase**: Postgres, Auth, Row Level Security, Realtime (live dashboard)
 - **ZKTeco ADMS / Push protocol** endpoint at `/iclock/*` for the fingerprint terminal
-- Docker + Caddy for deployment (Oracle Cloud Always Free for the demo)
+- Docker Compose + Caddy with self-hosted Supabase for deployment (Oracle Cloud Always Free for the demo)
 
 ## How time is calculated
 
@@ -27,8 +27,8 @@ This repo is the **manager web app**. The employee mobile app comes later and wi
 2. Apply the schema, either:
    - `npx supabase login && npx supabase link --project-ref <ref> && npx supabase db push`, or
    - paste `supabase/migrations/20261006000000_init.sql` into the SQL editor and run it.
-3. Optional demo data: run `supabase/seed.sql` in the SQL editor.
-4. **Authentication → Users → Add user** to create the manager login. The first account created becomes the manager.
+3. Optional demo data: run `supabase/seed.sql` in the SQL editor (see [Demo data](#demo-data); it also creates sign-in accounts).
+4. Without the demo data: **Authentication → Users → Add user** to create the manager login. The first account created becomes the manager.
 5. **Authentication → Sign In / Providers**: turn off "Allow new users to sign up" so nobody else can register.
 
 ### 2. Environment
@@ -52,38 +52,71 @@ curl -X POST "http://localhost:3000/iclock/cdata?SN=TEST001&table=ATTLOG" \
   --data-binary $'1\t2026-10-06 09:00:00\t0\t1\t0\t0\t0'
 ```
 
-## Deploy the demo on Oracle Cloud (Always Free)
+### Demo data
 
-1. **Create a VM**: Compute → Instances → Create. Image *Ubuntu 24.04*, shape *VM.Standard.A1.Flex* (Ampere, e.g. 2 OCPU / 12 GB, Always Free eligible). Add your SSH key.
-2. **Open ports in Oracle's firewall**: Networking → Virtual Cloud Networks → your VCN → Security Lists → Default → Add Ingress Rules for TCP **80**, **443** and **8080** from `0.0.0.0/0`.
-3. **Open the same ports on the VM itself** (Oracle's Ubuntu images block them with iptables):
-   ```bash
-   sudo iptables -I INPUT 6 -m state --state NEW -p tcp -m multiport --dports 80,443,8080 -j ACCEPT
-   sudo netfilter-persistent save
-   ```
-4. **Install Docker**:
-   ```bash
-   curl -fsSL https://get.docker.com | sudo sh
-   sudo usermod -aG docker $USER && newgrp docker
-   ```
-5. **Deploy**:
-   ```bash
-   git clone <this repo> shiftly && cd shiftly/deploy
-   cp ../.env.example .env && nano .env
-   docker compose up -d --build
-   ```
-   - `SITE_ADDRESS`: a domain pointing at the VM for automatic HTTPS. With no domain, use the free `sslip.io` name for your IP, e.g. `141-147-1-2.sslip.io` (replace with your public IP, dashes instead of dots). `:80` gives plain HTTP.
-   - `DEVICE_SERVER_HOST`: the VM's public IP or domain, as typed into the terminal.
-6. In Supabase **Authentication → URL Configuration**, set the Site URL to your dashboard address.
-7. Point the terminal at `DEVICE_SERVER_HOST`, port `8080` (Devices page has the steps).
+`supabase/seed.sql` sets up a store team for client demos: eleven staff plus one leaver, eight weeks of fingerprint scans, a rota for the next fortnight, pay rates with this year's National Living Wage rise, holidays (approved, pending, declined, cancelled), manager overrides, two terminals and a few things to point at: a missed clock out, a session the manager fixed, a manual clock in, a duplicate scan and an unrecognised finger.
 
-Updating: `git pull && docker compose up -d --build`.
+All dates are relative to when the seed runs, so **reseed shortly before each demo, during shop hours (08:30–17:30 UK)**. That way the dashboard shows people mid-shift, one person late and one on holiday:
+
+```bash
+npx supabase db reset
+```
+
+To run against the local database (Docker), start Supabase with `npx supabase start`, put its URL and keys (`npx supabase status`) in `.env.supabase-local`, and use the `shiftly-local` launch config (port 3001). `NEXT_PUBLIC_STORE_NAME` in that file sets the store name.
+
+Sign-in accounts (all use the password `shiftly-demo-2026`):
+
+| Email | Role | Opens |
+| --- | --- | --- |
+| `sarah.mitchell@example.co.uk` | Manager | Dashboard, rota, wages, devices |
+| `amira@example.co.uk` | Employee (store supervisor) | Employee app `/me` |
+| `tom@example.co.uk` | Employee | `/me` |
+| `priya@example.co.uk` | Employee | `/me` |
+| `chloe@example.co.uk` | Employee | `/me` |
+
+The password is public. If you seed a database that anyone else can reach, change these passwords or delete the accounts afterwards.
+
+## Deploy on Oracle Cloud (Always Free)
+
+The demo runs at **https://shiftly.softilo.co.uk** on the shared Oracle VM (Ampere ARM64, Ubuntu 24.04) that also hosts the Softilo sites. Everything Shiftly needs runs in one Docker Compose project, `shiftly`:
+
+- **Self-hosted Supabase**: Postgres, Auth, PostgREST and Realtime, the same versions the Supabase CLI uses locally. The database is not reachable from outside the VM.
+- **The app** (Next.js standalone build).
+- **A small Caddy gateway** on `127.0.0.1:3600`. It routes `/auth/v1`, `/rest/v1` and `/realtime/v1` to Supabase and everything else to the app, so the app and its Supabase API share one domain.
+
+The VM's own Caddy terminates HTTPS for the domain and proxies to the gateway (`/etc/caddy/sites/shiftly.caddy`). It also answers `/iclock/*` on plain HTTP port 80 for fingerprint terminals, so no extra firewall ports are needed. Secrets are generated on the server in `/etc/shiftly/shiftly.env` and never leave it; the code and compose files live in `/opt/shiftly`.
+
+**First time** (the VM already has Docker and Caddy):
+
+1. Point the domain at the VM: in Porkbun, add an **A** record for `shiftly` → the VM's public IP.
+2. Generate secrets on the server:
+   ```bash
+   ssh ubuntu@<vm> "sudo DOMAIN=shiftly.softilo.co.uk bash -s" < deploy/setup-server.sh
+   ```
+3. Build and start everything, loading the demo data:
+   ```bash
+   SERVER=ubuntu@<vm> SSH_KEY=~/.ssh/<key> SEED=1 bash deploy/deploy.sh
+   ```
+4. Once DNS resolves, turn on HTTPS through the host's Caddy (it validates the config before reloading):
+   ```bash
+   ssh ubuntu@<vm> "sudo DOMAIN=shiftly.softilo.co.uk WITH_CADDY=1 bash -s" < deploy/setup-server.sh
+   ```
+
+**Updating**: run step 3 again without `SEED=1`. It uploads the working tree, rebuilds the app, applies any new files in `supabase/migrations/` (tracked in `supabase_migrations.schema_migrations`, as the Supabase CLI does) and restarts what changed.
+
+**Fresh demo data before a client demo**: `RESEED=1` wipes all data and accounts on the server and loads `supabase/seed.sql` again:
+
+```bash
+SERVER=ubuntu@<vm> SSH_KEY=~/.ssh/<key> RESEED=1 bash deploy/deploy.sh
+```
+
+**On the server**, `cd /opt/shiftly` and use `sudo docker compose ...` (`ps`, `logs app`, `exec db psql -U postgres`). The demo accounts and their public password are in [Demo data](#demo-data). Without SMTP, sign-up is disabled and accounts are confirmed on creation; add staff logins as the manager or in SQL.
 
 ## Fingerprint terminal
 
 Any ZKTeco model with **ADMS / Cloud Server** support (Wi-Fi or 4G versions) works. Fingerprint templates stay on the terminal; only "user 12 scanned at 09:01:33" reaches the server. Unknown terminals are recorded but ignored until the manager ticks **Accept scans**.
 
-Port 8080 serves only `/iclock/*` over plain HTTP because many terminals cannot do HTTPS. The dashboard itself is served over HTTPS.
+The push endpoints `/iclock/*` also answer on plain HTTP (port 80) because many terminals cannot do HTTPS. Everything else redirects to HTTPS.
 
 ### UK GDPR
 
@@ -97,5 +130,5 @@ supabase/seed.sql      demo data
 src/app/(app)/         dashboard, attendance, calendar, employees, holidays, wages, devices
 src/app/iclock/        fingerprint terminal push endpoint
 src/lib/actions/       server actions (all writes go through RLS as the signed-in manager)
-deploy/                docker compose + Caddy for a single VM
+deploy/                Docker Compose (self-hosted Supabase + app + gateway) and deploy scripts for a single VM
 ```

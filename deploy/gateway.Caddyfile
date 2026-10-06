@@ -1,0 +1,44 @@
+# Internal gateway for the Shiftly stack, published on 127.0.0.1:3600. The host's Caddy terminates HTTPS and
+# proxies here: Supabase APIs are routed by path (as Supabase's own gateway does), everything else goes to the app.
+{
+	admin off
+	auto_https off
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+:80 {
+	handle_path /auth/v1/* {
+		reverse_proxy auth:9999
+	}
+
+	handle_path /rest/v1/* {
+		reverse_proxy rest:3000
+	}
+
+	# Realtime's admin API stays private.
+	handle /realtime/v1/api/tenants* {
+		respond 403
+	}
+	handle /realtime/v1/api/openapi* {
+		respond 403
+	}
+	# Realtime picks its tenant from the first label of the Host header.
+	handle_path /realtime/v1/api/* {
+		rewrite * /api{path}
+		reverse_proxy realtime:4000 {
+			header_up Host realtime-dev.supabase-realtime
+		}
+	}
+	handle_path /realtime/v1/* {
+		rewrite * /socket{path}
+		reverse_proxy realtime:4000 {
+			header_up Host realtime-dev.supabase-realtime
+		}
+	}
+
+	handle {
+		reverse_proxy app:3000
+	}
+}
