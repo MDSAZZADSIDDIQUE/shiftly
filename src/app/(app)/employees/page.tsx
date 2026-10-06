@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { DailySummary, Employee, PayRate } from '@/lib/types'
 import { AddEmployeeDialog } from './employee-form'
 
-export const metadata: Metadata = { title: 'Employees' }
+export const metadata: Metadata = { title: 'Staff' }
 
 export default async function EmployeesPage() {
   const today = londonToday()
@@ -28,13 +28,13 @@ export default async function EmployeesPage() {
   return (
     <>
       <PageHeader
-        title="Employees"
-        description={`${employees.filter((e) => e.active).length} active team members`}
+        title="Staff"
+        description={`${employees.filter((e) => e.active).length} on the books`}
         actions={<AddEmployeeDialog action={createEmployee} />}
       />
       {employees.length === 0 ? (
         <div className="surface rounded-2xl">
-          <EmptyState icon={<UserPlusIcon />} title="Build your team" action={<AddEmployeeDialog action={createEmployee} />}>
+          <EmptyState icon={<UserPlusIcon />} title="No staff yet" action={<AddEmployeeDialog action={createEmployee} />}>
             Add your first employee, then enrol their fingerprint on the terminal to start tracking hours.
           </EmptyState>
         </div>
@@ -93,7 +93,7 @@ export default async function EmployeesPage() {
                 </div>
                 <dl className="grid grid-cols-3 gap-2 border-t pt-4 text-center">
                   <div>
-                    <dt className="text-[0.7rem] text-muted-foreground">Hours / day</dt>
+                    <dt className="text-[0.7rem] text-muted-foreground">Usual day</dt>
                     <dd className="text-sm font-semibold">{formatMinutes(e.daily_minutes)}</dd>
                   </div>
                   <div>

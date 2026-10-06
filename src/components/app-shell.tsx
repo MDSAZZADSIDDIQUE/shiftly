@@ -12,11 +12,10 @@ import {
   MenuIcon,
   PalmtreeIcon,
   PoundSterlingIcon,
-  StoreIcon,
   UsersIcon,
 } from 'lucide-react'
-import { BrandMark } from '@/components/brand-mark'
 import { ThemeToggle } from '@/components/theme'
+import { Wordmark } from '@/components/wordmark'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { signOut } from '@/lib/actions/auth'
@@ -26,25 +25,20 @@ import { cn } from '@/lib/utils'
 export type NavCounts = { clockedIn: number; pendingLeave: number }
 
 const NAV = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboardIcon, badge: 'clockedIn' as const },
-  { href: '/attendance', label: 'Attendance', icon: ClockIcon },
-  { href: '/calendar', label: 'Calendar & shifts', icon: CalendarDaysIcon },
-  { href: '/employees', label: 'Employees', icon: UsersIcon },
+  { href: '/', label: 'Today', icon: LayoutDashboardIcon, badge: 'clockedIn' as const },
+  { href: '/attendance', label: 'Timesheet', icon: ClockIcon },
+  { href: '/calendar', label: 'Rota', icon: CalendarDaysIcon },
+  { href: '/employees', label: 'Staff', icon: UsersIcon },
   { href: '/leave', label: 'Holidays', icon: PalmtreeIcon, badge: 'pendingLeave' as const },
   { href: '/wages', label: 'Wages', icon: PoundSterlingIcon },
-  { href: '/devices', label: 'Fingerprint devices', icon: FingerprintIcon },
+  { href: '/devices', label: 'Terminals', icon: FingerprintIcon },
 ]
 
 function Brand({ storeName }: { storeName: string }) {
   return (
-    <Link href="/" className="flex items-center gap-2.5 px-1.5">
-      <BrandMark />
-      <span className="min-w-0 leading-tight">
-        <span className="block font-display text-[1.05rem] font-semibold tracking-tight">Shiftly</span>
-        <span className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-          <StoreIcon className="size-3" /> {storeName}
-        </span>
-      </span>
+    <Link href="/" className="block min-w-0 px-1.5 leading-tight" aria-label="Shiftly, today">
+      <Wordmark className="text-[1.35rem]" />
+      <span className="mt-0.5 block truncate text-xs text-muted-foreground">{storeName}</span>
     </Link>
   )
 }

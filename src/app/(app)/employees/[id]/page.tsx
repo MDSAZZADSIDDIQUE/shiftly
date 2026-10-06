@@ -88,7 +88,7 @@ export default async function EmployeePage({ params }: PageProps<'/employees/[id
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Usual hours per day" value={formatMinutes(employee.daily_minutes)} hint={employee.daily_minutes == null ? 'Paid for actual time' : 'Set by you'} />
+        <StatCard label="Usual day" value={formatMinutes(employee.daily_minutes)} hint={employee.daily_minutes == null ? 'Paid for time worked' : 'Set by you'} />
         <StatCard label="Paid this month" value={formatMinutes(Number(wage?.paid_minutes ?? 0))} hint={`${wage?.days_worked ?? 0} days worked`} />
         <StatCard label="Earned this month" value={formatPence(Number(wage?.gross_pence ?? 0))} hint="Gross, before tax" />
         <StatCard label="Current rate" value={rates[0] ? formatPence(rates.find((r) => r.effective_from <= today)?.hourly_rate_pence ?? rates[0].hourly_rate_pence) : '—'} hint="per hour" />
@@ -100,9 +100,9 @@ export default async function EmployeePage({ params }: PageProps<'/employees/[id
             <HoursChart data={chart} height={220} color={employee.color} />
           </Panel>
 
-          <Panel title="Daily attendance">
+          <Panel title="Timesheet">
             {days.length === 0 ? (
-              <EmptyState icon={<CalendarCheckIcon />} title="No attendance yet" compact>Days worked in the last 30 days will appear here.</EmptyState>
+              <EmptyState icon={<CalendarCheckIcon />} title="No attendance yet" compact>Nothing in the last 30 days.</EmptyState>
             ) : (
               <Table>
                 <TableHeader>
@@ -142,7 +142,6 @@ export default async function EmployeePage({ params }: PageProps<'/employees/[id
         <div className="grid h-fit gap-6">
           <Panel
             title="Pay rates"
-            info="Wages use the rate in effect on each day"
             actions={
               <FormDialog
                 title="New hourly rate"

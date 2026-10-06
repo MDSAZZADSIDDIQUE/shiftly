@@ -14,7 +14,7 @@ import type { CalendarDay, DailySummary, Employee, LeaveRequest, Shift } from '@
 import { TZDate } from '@date-fns/tz'
 import { AddShiftForm } from './add-shift-form'
 
-export const metadata: Metadata = { title: 'Calendar & shifts' }
+export const metadata: Metadata = { title: 'Rota' }
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -93,8 +93,7 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
   return (
     <>
       <PageHeader
-        title="Calendar & shifts"
-        description="Who works each day and for how long. Pick a day to assign shifts."
+        title="Rota"
         actions={
           <div className="surface flex items-center gap-1 rounded-xl p-1">
             <Button variant="ghost" size="icon-sm" nativeButton={false} render={<Link href={`/calendar?month=${prev}`} aria-label="Previous month" />}>
@@ -111,9 +110,10 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-1 gap-6 2xl:grid-cols-[1fr_360px]">
         <div className="surface rise-in min-w-0 rounded-2xl p-2 sm:p-3">
-          <div className="overflow-x-auto">
+          {/* Sideways scrolling only (phones); never a vertical scrollbar inside the card. */}
+          <div className="overflow-x-auto overflow-y-hidden">
             <div className="grid min-w-[700px] grid-cols-7 gap-1.5">
               {WEEKDAYS.map((d) => (
                 <div key={d} className="px-1.5 pb-1 text-xs font-semibold text-muted-foreground">{d}</div>
@@ -210,7 +210,7 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
            
           >
             {dayShifts.length === 0 ? (
-              <EmptyState icon={<CalendarPlusIcon />} title="No shifts yet" compact>
+              <EmptyState icon={<CalendarPlusIcon />} title="Nobody on the rota" compact>
                 Use the form below to put someone on the rota.
               </EmptyState>
             ) : (
@@ -238,8 +238,8 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
                         className="reveal"
                         action={deleteShift.bind(null, s.id)}
                         confirm="Remove?"
-                        successMessage="Shift removed"
-                        aria-label="Remove shift"
+                        successMessage="Taken off the rota"
+                        aria-label="Take off the rota"
                       >
                         <Trash2Icon />
                       </ActionButton>

@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { Device } from '@/lib/types'
 import { requestTime } from '@/lib/format'
 
-export const metadata: Metadata = { title: 'Fingerprint devices' }
+export const metadata: Metadata = { title: 'Terminals' }
 
 export default async function DevicesPage() {
   const supabase = await createClient()
@@ -29,8 +29,7 @@ export default async function DevicesPage() {
   return (
     <>
       <PageHeader
-        title="Fingerprint devices"
-        description="Wi-Fi / 4G terminals that send clock ins straight to the cloud — no cables to a computer."
+        title="Terminals"
         actions={
           <FormDialog
             title="Add a terminal"
@@ -58,7 +57,7 @@ export default async function DevicesPage() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_380px]">
         <Panel title="Terminals">
           {devices.length === 0 ? (
-            <EmptyState icon={<FingerprintIcon />} title="No terminals yet">Point a terminal at this server using the steps on the right and it will show up here.</EmptyState>
+            <EmptyState icon={<FingerprintIcon />} title="No terminals yet">Set one up with the steps alongside. It shows here once it checks in.</EmptyState>
           ) : (
             <ul className="grid gap-3">
               {devices.map((d) => {

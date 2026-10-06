@@ -39,7 +39,7 @@ function Fields({ employee, withRate }: { employee?: Employee; withRate?: boolea
         <Field label="Fingerprint user ID" hint="The user number on the terminal">
           <Input name="device_user_id" defaultValue={employee?.device_user_id ?? ''} placeholder="e.g. 12" inputMode="numeric" />
         </Field>
-        <Field label="Working hours per day" hint="e.g. 5 or 4:30. Empty = pay actual time">
+        <Field label="Usual hours a day" hint="e.g. 5 or 4:30. Leave empty to pay time worked.">
           <Input name="daily_hours" defaultValue={hoursInput(employee?.daily_minutes)} placeholder="5" />
         </Field>
       </div>
@@ -80,12 +80,12 @@ function Fields({ employee, withRate }: { employee?: Employee; withRate?: boolea
 export function AddEmployeeDialog({ action }: { action: (form: FormData) => Promise<ActionResult> }) {
   return (
     <FormDialog
-      title="Add employee"
+      title="Add staff"
       description="Enrol their fingerprint on the terminal, then enter the user ID it shows here."
-      trigger={{ label: <><PlusIcon /> Add employee</> }}
+      trigger={{ label: <><PlusIcon /> Add staff</> }}
       action={action}
       submitLabel="Add employee"
-      successMessage="Employee added"
+      successMessage="Added"
       wide
     >
       <Fields withRate />

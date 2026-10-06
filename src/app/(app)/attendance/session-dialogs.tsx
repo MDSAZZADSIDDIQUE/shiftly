@@ -59,7 +59,7 @@ export function SessionDialog({
   return (
     <FormDialog
       title={mode === 'add' ? 'Add clock in / out' : 'Edit clock in / out'}
-      description="Times are UK time. A clock out earlier than the clock in counts as the next day."
+      description="UK time. An out time before the in time counts as the next day."
       trigger={
         mode === 'add'
           ? { label: <><PlusIcon /> Add time</>, size: 'xs', variant: 'ghost', className: 'reveal text-muted-foreground' }

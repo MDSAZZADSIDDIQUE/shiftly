@@ -61,7 +61,7 @@ export default async function WagesPage({ searchParams }: PageProps<'/wages'>) {
     <>
       <PageHeader
         title="Wages"
-        description="Gross pay before tax and deductions"
+        description="Gross, before tax and NI"
         actions={
           <Button variant="outline" nativeButton={false} render={<a href={`/wages/export?from=${from}&to=${to}`} />}>
             <DownloadIcon /> Export CSV
@@ -148,13 +148,13 @@ export default async function WagesPage({ searchParams }: PageProps<'/wages'>) {
           hint={<Delta current={totals.paid} previous={prevTotals.paid} suffix={compareLabel} />}
         />
         <StatCard
-          label="Actually worked"
+          label="On the clock"
           value={<CountUp value={Math.floor(totals.worked / 60)} format="minutes" />}
           hint={unpaidHint(Math.floor(totals.worked / 60) - totals.paid)}
          
         />
         <StatCard
-          label="Average per paid hour"
+          label="Per paid hour"
           value={totals.paid > 0 ? formatPence(Math.round((totals.gross / totals.paid) * 60)) : '—'}
           hint={`${rows.filter((r) => r.paid_minutes > 0).length} employees paid`}
          
@@ -178,16 +178,16 @@ export default async function WagesPage({ searchParams }: PageProps<'/wages'>) {
       )}
 
       <div className="mt-6 grid grid-cols-1 gap-6 2xl:grid-cols-[1fr_400px]">
-        <Panel title="By employee" className="min-w-0" bodyClassName="p-0 sm:px-0">
+        <Panel title="By person" className="min-w-0" bodyClassName="p-0 sm:px-0">
           {rows.length === 0 ? (
-            <EmptyState icon={<UsersIcon />} title="No employees yet">Add your team to see their wages here.</EmptyState>
+            <EmptyState icon={<UsersIcon />} title="No staff yet" />
           ) : (
             <>
               <div className="hidden md:block">
                 <table className="w-full text-sm whitespace-nowrap">
                   <thead>
                     <tr className="border-y bg-muted/40 text-left text-xs text-muted-foreground">
-                      <th className="px-5 py-2 font-medium">Employee</th>
+                      <th className="px-5 py-2 font-medium">Name</th>
                       <th className="px-3 py-2 text-right font-medium">Days</th>
                       <th className="px-3 py-2 text-right font-medium">Worked</th>
                       <th className="px-3 py-2 text-right font-medium">Paid hours</th>
@@ -251,7 +251,7 @@ export default async function WagesPage({ searchParams }: PageProps<'/wages'>) {
           )}
         </Panel>
 
-        <Panel title="Wages by employee" className="h-fit">
+        <Panel title="Split" className="h-fit">
           {paidRows.length === 0 ? (
             <EmptyState icon={<PoundSterlingIcon />} title="No wages in this period" compact />
           ) : (

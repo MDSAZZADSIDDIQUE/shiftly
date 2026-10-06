@@ -24,12 +24,12 @@ export function AddShiftForm({ date, employees }: { date: string; employees: Opt
     <div className="rounded-lg bg-muted/50 p-3">
       <ActionForm
         action={createShift}
-        successMessage="Shift added"
+        successMessage="Added to the rota"
         onSuccess={() => setEmployeeId('')}
         className="grid gap-3"
       >
         <input type="hidden" name="date" value={date} />
-        <Field label="Assign a shift">
+        <Field label="Add to the rota">
           <NativeSelect
             name="employee_id"
             value={employeeId}
@@ -42,7 +42,7 @@ export function AddShiftForm({ date, employees }: { date: string; employees: Opt
               if (minutes) setEnd(addMinutes(start, minutes))
             }}
           >
-            <option value="">Choose employee…</option>
+            <option value="">Who?</option>
             {employees.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.name}

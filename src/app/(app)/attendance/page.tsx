@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils'
 import type { AttendanceSession, DailySummary, Employee, LeaveRequest, Shift } from '@/lib/types'
 import { SessionDialog, SetHoursDialog } from './session-dialogs'
 
-export const metadata: Metadata = { title: 'Attendance' }
+export const metadata: Metadata = { title: 'Timesheet' }
 
 const STALE_MS = 16 * 3600 * 1000
 
@@ -89,7 +89,7 @@ export default async function AttendancePage({ searchParams }: PageProps<'/atten
   return (
     <>
       <PageHeader
-        title="Attendance"
+        title="Timesheet"
         description={prettyDate(date, 'EEEE d MMMM yyyy')}
         actions={
           <>
@@ -105,18 +105,18 @@ export default async function AttendancePage({ searchParams }: PageProps<'/atten
         <Summary icon={<ClockIcon />} label="To pay" value={formatMinutes(totalPaid)} accent />
       </div>
 
-      <Panel className="mb-6" title="Timeline">
+      <Panel className="mb-6" title="Day">
         <DayTimeline date={date} employees={employees} sessions={sessions} shifts={shifts} nowIso={new Date(now).toISOString()} isToday={date === today} />
       </Panel>
 
       <Panel
-        title="Hours by employee"
+        title="By person"
         info="Paid hours use the hours you set for the day, otherwise the employee's usual hours (capped at time actually worked)."
         bodyClassName="p-0 sm:px-0"
        
       >
         {rows.length === 0 ? (
-          <EmptyState icon={<UsersIcon />} title="No employees yet">Add your team on the Employees page.</EmptyState>
+          <EmptyState icon={<UsersIcon />} title="No staff yet" />
         ) : (
           <>
             {/* Desktop table */}
@@ -124,7 +124,7 @@ export default async function AttendancePage({ searchParams }: PageProps<'/atten
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-y bg-muted/40 text-left text-xs text-muted-foreground">
-                    <th className="px-5 py-2 font-medium">Employee</th>
+                    <th className="px-5 py-2 font-medium">Name</th>
                     <th className="px-3 py-2 font-medium">Clock in → out</th>
                     <th className="w-[30%] px-3 py-2 font-medium">Worked vs set hours</th>
                     <th className="px-5 py-2 text-right font-medium">Paid</th>
@@ -189,7 +189,7 @@ function Who({ r }: { r: Row }) {
           {r.onLeave && <span className="tone-amber rounded-full px-1.5 py-px text-[0.68rem] font-medium">Holiday</span>}
           {r.scheduled.map((x) => (
             <span key={x.id} className="rounded-full border px-1.5 py-px text-[0.68rem] text-muted-foreground tabular-nums">
-              Shift {londonTime(x.starts_at)}–{londonTime(x.ends_at)}
+              Rota {londonTime(x.starts_at)}–{londonTime(x.ends_at)}
             </span>
           ))}
         </div>
@@ -213,10 +213,10 @@ function Sessions({ r, date, now }: { r: Row; date: string; now: number }) {
                 {londonDate(x.clock_out) !== x.work_date && <sup className="text-muted-foreground"> +1</sup>}
               </span>
             ) : stale ? (
-              <span className="inline-flex items-center gap-1 text-warning-text"><AlertTriangleIcon className="size-3.5" /> No clock out</span>
+              <span className="inline-flex items-center gap-1 text-warning-text"><AlertTriangleIcon className="size-3.5" /> No scan out</span>
             ) : (
               <span className="inline-flex items-center gap-1 text-success-text">
-                <span className="size-1.5 animate-pulse rounded-full bg-success" /> working
+                <span className="size-1.5 animate-pulse rounded-full bg-success" /> on the floor
               </span>
             )}
             {x.edited && <span className="tone-zinc rounded px-1 text-[0.65rem]" title={x.note ?? 'Edited by manager'}>edited</span>}

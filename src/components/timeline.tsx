@@ -41,7 +41,7 @@ export function DayTimeline({
   )
 
   if (rows.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">No shifts or clock-ins for this day yet.</p>
+    return <p className="py-8 text-center text-sm text-muted-foreground">Nobody on the rota or clocked in.</p>
   }
 
   const opens = toMinutes(STORE.opens)
@@ -172,7 +172,7 @@ export function DayTimeline({
             <span className="h-2.5 w-4 rounded-sm bg-muted-foreground" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent 0 3px, rgb(255 255 255 / 0.35) 3px 6px)' }} /> Working now
           </span>
           <span className="flex items-center gap-1.5"><span className="h-3 w-4 rounded-sm border-2 border-dashed border-muted-foreground" /> Scheduled</span>
-          <span className="flex items-center gap-1.5"><span className="h-3 w-4 rounded-sm bg-muted" style={{ backgroundImage: HATCH }} /> Store closed</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-4 rounded-sm bg-muted" style={{ backgroundImage: HATCH }} /> Shop closed</span>
           {showNow && <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 bg-primary" /> Now</span>}
         </div>
       </div>

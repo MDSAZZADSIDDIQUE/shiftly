@@ -39,7 +39,7 @@ export default async function DashboardPage() {
   const now = requestTime()
   const nowIso = new Date(now).toISOString()
 
-  const [employeesRes, summaryRes, sessionsRes, shiftsRes, leaveRes, trendRes, punchesRes, lastWeekRes, pendingRes, name] =
+  const [employeesRes, summaryRes, sessionsRes, shiftsRes, leaveRes, trendRes, punchesRes, lastWeekRes, pendingRes] =
     await Promise.all([
       supabase.from('employees').select('*').eq('active', true).order('full_name'),
       supabase.from('daily_summary').select('*').eq('work_date', today),
@@ -50,7 +50,6 @@ export default async function DashboardPage() {
       supabase.from('punches').select('*').order('punched_at', { ascending: false }).limit(8),
       supabase.from('attendance_sessions').select('*').eq('work_date', shiftDate(today, -7)),
       supabase.from('leave_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-      managerFirstName(supabase),
     ])
 
   const employees = (employeesRes.data ?? []) as Employee[]
@@ -106,15 +105,15 @@ export default async function DashboardPage() {
   return (
     <>
       <PageHeader
-        title={`Good ${greeting(now)}${name ? `, ${name}` : ''}`}
-        description={`${STORE.name} · ${prettyDate(today, 'EEEE d MMMM yyyy')}`}
+        title="Today"
+        description={`${prettyDate(today, 'EEEE d MMMM')} · ${STORE.name}`}
         actions={<LiveRefresh />}
       />
 
       {/* The day at a glance: the timeline leads, the headline figures sit underneath it. */}
       <section className="surface rise-in overflow-hidden rounded-2xl">
         <header className="flex items-center gap-1.5 px-4 pt-5 sm:px-6">
-          <h2 className="eyebrow">Today</h2>
+          <h2 className="eyebrow">Day</h2>
           <InfoTip>Solid bars are time worked, dashed outlines are scheduled shifts, and the brass line is now.</InfoTip>
         </header>
         <div className="px-4 pt-3 pb-5 sm:px-6">
@@ -139,7 +138,7 @@ export default async function DashboardPage() {
             hint={workedLastWeek > 0 ? <Delta current={workedToday} previous={workedLastWeek} suffix="vs last week" /> : 'All staff'}
           />
           <Figure
-            label="Scheduled"
+            label="On the rota"
             href="/calendar"
             value={<CountUp value={scheduledPeople.size} />}
             hint={nextShift ? `Next: ${nextShift.e.full_name.split(' ')[0]} at ${londonTime(nextShift.shift.starts_at)}` : `${shifts.length} shift${shifts.length === 1 ? '' : 's'}`}
@@ -167,17 +166,15 @@ export default async function DashboardPage() {
             {employees.length === 0 ? (
               <EmptyState
                 icon={<UserPlusIcon />}
-                title="Add your team"
-                action={<Button nativeButton={false} render={<Link href="/employees" />}>Add employees</Button>}
-              >
-                Add employees and enrol their fingerprints to see who&apos;s in.
-              </EmptyState>
+                title="No staff yet"
+                action={<Button nativeButton={false} render={<Link href="/employees" />}>Add staff</Button>}
+              />
             ) : (
               <div className="grid gap-5">
                 <section>
                   <GroupLabel count={working.length} dot="var(--success)">Working now</GroupLabel>
                   {working.length === 0 ? (
-                    <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">Nobody is clocked in.</p>
+                    <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">Nobody&apos;s in yet.</p>
                   ) : (
                     <div className="grid gap-2.5 sm:grid-cols-2">
                       {working.map(({ e, open, closedSeconds }) => (
@@ -228,7 +225,7 @@ export default async function DashboardPage() {
                         <PersonRow key={e.id} e={e} punch>
                           <span className="tabular-nums">
                             {formatDuration(s.worked_seconds)} · out {londonTime(s.last_out)}
-                            {s.missed_clock_out && <span className="ml-1 text-warning-text">· missed clock out</span>}
+                            {s.missed_clock_out && <span className="ml-1 text-warning-text">· no scan out</span>}
                           </span>
                           <HoursBar
                             className="mt-1.5"
@@ -267,10 +264,10 @@ export default async function DashboardPage() {
           </Panel>
         </div>
 
-        <Panel title="Latest scans" className="h-fit">
+        <Panel title="Scans" className="h-fit">
           {punches.length === 0 ? (
             <EmptyState icon={<FingerprintIcon />} title="No scans yet" compact>
-              Scans appear here the moment someone uses the fingerprint terminal.
+              Each scan on the terminal shows here straight away.
             </EmptyState>
           ) : (
             <ol className="relative grid gap-2 before:absolute before:inset-y-2 before:left-3.5 before:w-px before:bg-border">
@@ -320,18 +317,6 @@ function Figure({ label, value, hint, href }: { label: string; value: React.Reac
       </span>
     </Link>
   )
-}
-
-async function managerFirstName(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data } = await supabase.auth.getClaims()
-  if (!data?.claims) return null
-  const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', data.claims.sub).maybeSingle()
-  return profile?.full_name?.split(' ')[0] ?? null
-}
-
-function greeting(now: number) {
-  const hour = Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Europe/London' }).format(now))
-  return hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'
 }
 
 function PersonRow({

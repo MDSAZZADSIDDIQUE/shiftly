@@ -71,7 +71,6 @@ export default async function LeavePage() {
     <>
       <PageHeader
         title="Holidays"
-        description="Book time off for your team and approve requests."
         actions={<BookLeaveDialog action={createLeave} employees={employees.filter((e) => e.active).map((e) => ({ id: e.id, name: e.full_name }))} />}
       />
 
@@ -87,7 +86,7 @@ export default async function LeavePage() {
             className={cn(pending.length > 0 && 'ring-1 ring-warning/40')}
           >
             {pending.length === 0 ? (
-              <EmptyState icon={<InboxIcon />} title="All caught up" compact>Requests from the employee app will appear here.</EmptyState>
+              <EmptyState icon={<InboxIcon />} title="Nothing waiting" compact />
             ) : (
               <ul className="grid gap-2">
                 {pending.map((l) =>
@@ -107,9 +106,9 @@ export default async function LeavePage() {
             )}
           </Panel>
 
-          <Panel title="Upcoming & current">
+          <Panel title="Booked">
             {upcoming.length === 0 ? (
-              <EmptyState icon={<CalendarHeartIcon />} title="No holidays booked" compact>Book time off with the button above.</EmptyState>
+              <EmptyState icon={<CalendarHeartIcon />} title="No holidays booked" compact />
             ) : (
               <ul className="grid gap-2">
                 {upcoming.map((l) =>
@@ -133,7 +132,7 @@ export default async function LeavePage() {
 
         <Panel
           title={<span className="flex items-center gap-2"><PalmtreeIcon className="size-4 text-warning-text" />Annual leave taken in {year}</span>}
-          info="Bar shows days against 28 (5.6 weeks for full-time staff)"
+          info="Against 28 days, the statutory 5.6 weeks for full-time staff."
           className="h-fit"
         >
           <ul className="grid gap-3">

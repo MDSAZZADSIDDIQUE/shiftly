@@ -23,7 +23,7 @@ export function BookLeaveDialog({
     >
       <Field label="Employee">
         <NativeSelect name="employee_id" required defaultValue="">
-          <option value="" disabled>Choose employee…</option>
+          <option value="" disabled>Who?</option>
           {employees.map((e) => (
             <option key={e.id} value={e.id}>{e.name}</option>
           ))}
