@@ -6,7 +6,7 @@ import { ActionButton } from '@/components/forms'
 import { EmptyState, PageHeader, Panel, PersonAvatar } from '@/components/people'
 import { HoursBar } from '@/components/visuals'
 import { Button } from '@/components/ui/button'
-import { deleteShift } from '@/lib/actions/schedule'
+import { deleteShift, updateShift } from '@/lib/actions/schedule'
 import { TZ, formatDuration, formatMinutes, isDateString, londonTime, londonToday, prettyDate, shiftDate } from '@/lib/format'
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
@@ -14,6 +14,7 @@ import type { CalendarDay, DailySummary, Employee, LeaveRequest, Shift } from '@
 import { TZDate } from '@date-fns/tz'
 import { AddShiftForm } from './add-shift-form'
 import { CopyWeekDialog, FillRotaDialog } from './bulk-rota'
+import { EditShiftDialog } from './edit-shift-dialog'
 
 export const metadata: Metadata = { title: 'Rota' }
 
@@ -94,6 +95,8 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
   }
 
   const dayShifts = shifts.filter((s) => s.shift_date === selected)
+  // Who a shift can be moved to: current staff, plus whoever it belongs to now.
+  const staffOptions = (keep: string) => employees.filter((e) => e.active || e.id === keep).map((e) => ({ id: e.id, name: e.full_name }))
   const dayLeave = leave.filter((l) => l.start_date <= selected && l.end_date >= selected)
   const dayWorked = worked.filter((d) => d.work_date === selected)
 
@@ -243,6 +246,18 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
                           {s.note && ` · ${s.note}`}
                         </p>
                       </div>
+                      <EditShiftDialog
+                        // Remount after a save so the form starts from the updated shift.
+                        key={`${s.employee_id}-${s.starts_at}-${s.ends_at}-${s.note ?? ''}`}
+                        action={updateShift.bind(null, s.id)}
+                        name={e.full_name}
+                        employeeId={s.employee_id}
+                        date={s.shift_date}
+                        start={londonTime(s.starts_at)}
+                        end={londonTime(s.ends_at)}
+                        note={s.note}
+                        employees={staffOptions(s.employee_id)}
+                      />
                       <ActionButton
                         variant="ghost"
                         size="icon-sm"

@@ -8,13 +8,14 @@ import { done, optional, str } from './helpers'
 const TIME = /^\d{2}:\d{2}$/
 const LEAVE_TYPES: LeaveType[] = ['annual', 'sick', 'unpaid', 'other']
 
-export async function createShift(form: FormData): Promise<ActionResult> {
+/** Reads employee, date, start, end and note from a shift form. An end at or before the start runs past midnight. */
+function readShift(form: FormData) {
   const employeeId = str(form, 'employee_id')
   const date = str(form, 'date')
   const start = str(form, 'start')
   const end = str(form, 'end')
-  if (!employeeId) return { error: 'Choose an employee.' }
-  if (!isDateString(date) || !TIME.test(start) || !TIME.test(end)) return { error: 'Enter a date, start and end time.' }
+  if (!employeeId) return { error: 'Choose an employee.' } as const
+  if (!isDateString(date) || !TIME.test(start) || !TIME.test(end)) return { error: 'Enter a date, start and end time.' } as const
 
   const startsAt = londonToIso(date, start)
   let endsAt = londonToIso(date, end)
@@ -23,14 +24,22 @@ export async function createShift(form: FormData): Promise<ActionResult> {
     next.setUTCDate(next.getUTCDate() + 1)
     endsAt = londonToIso(next.toISOString().slice(0, 10), end)
   }
+  return { row: { employee_id: employeeId, starts_at: startsAt, ends_at: endsAt, note: optional(form, 'note') } } as const
+}
 
+export async function createShift(form: FormData): Promise<ActionResult> {
+  const shift = readShift(form)
+  if ('error' in shift) return { error: shift.error }
   const supabase = await createClient()
-  const { error } = await supabase.from('shifts').insert({
-    employee_id: employeeId,
-    starts_at: startsAt,
-    ends_at: endsAt,
-    note: optional(form, 'note'),
-  })
+  const { error } = await supabase.from('shifts').insert(shift.row)
+  return done(error)
+}
+
+export async function updateShift(id: string, form: FormData): Promise<ActionResult> {
+  const shift = readShift(form)
+  if ('error' in shift) return { error: shift.error }
+  const supabase = await createClient()
+  const { error } = await supabase.from('shifts').update(shift.row).eq('id', id)
   return done(error)
 }
 
