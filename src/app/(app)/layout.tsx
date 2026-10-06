@@ -1,7 +1,5 @@
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell'
-import { Button } from '@/components/ui/button'
-import { signOut } from '@/lib/actions/auth'
 import { createClient } from '@/lib/supabase/server'
 import { STORE } from '@/lib/store'
 import { requestTime } from '@/lib/format'
@@ -17,19 +15,8 @@ export default async function AppLayout({ children }: LayoutProps<'/'>) {
     .eq('id', data.claims.sub)
     .maybeSingle()
 
-  if (profile?.role !== 'manager') {
-    return (
-      <main className="flex min-h-svh flex-col items-center justify-center gap-4 p-6 text-center">
-        <h1 className="text-xl font-semibold">Manager access only</h1>
-        <p className="max-w-sm text-sm text-muted-foreground">
-          This dashboard is for store managers. The employee app is coming soon.
-        </p>
-        <form action={signOut}>
-          <Button type="submit" variant="outline">Sign out</Button>
-        </form>
-      </main>
-    )
-  }
+  // Employees have their own app.
+  if (profile?.role !== 'manager') redirect('/me')
 
   // Sidebar badges: who's clocked in right now and holiday requests waiting for a decision.
   const recent = new Date(requestTime() - 16 * 3600 * 1000).toISOString()

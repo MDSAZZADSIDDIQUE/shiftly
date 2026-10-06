@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { AlertTriangleIcon, ClockIcon, UsersIcon } from 'lucide-react'
+import { AlertTriangleIcon, PoundSterlingIcon, TimerIcon, UsersIcon } from 'lucide-react'
 import { DateNav } from '@/components/date-nav'
 import { Measure } from '@/components/measure'
 import { LiveDuration, LiveRefresh } from '@/components/live'
-import { EmptyState, PageHeader, Panel, PersonAvatar } from '@/components/people'
+import { EmptyState, GhostIcon, PageHeader, Panel, PersonAvatar } from '@/components/people'
 import { DayTimeline } from '@/components/timeline'
 import { HoursBar, hoursStatus } from '@/components/visuals'
 import { addSession, deleteSession, setDayHours, updateSession } from '@/lib/actions/attendance'
@@ -101,8 +101,8 @@ export default async function AttendancePage({ searchParams }: PageProps<'/atten
 
       <div className="mb-6 grid grid-cols-3 gap-3">
         <Summary icon={<UsersIcon />} label="Came in" value={`${present}`} sub={`of ${employees.filter((e) => e.active).length}`} />
-        <Summary icon={<ClockIcon />} label="Worked" value={formatMinutes(Math.floor(totalWorked / 60))} />
-        <Summary icon={<ClockIcon />} label="To pay" value={formatMinutes(totalPaid)} accent />
+        <Summary icon={<TimerIcon />} label="Worked" value={formatMinutes(Math.floor(totalWorked / 60))} />
+        <Summary icon={<PoundSterlingIcon />} label="To pay" value={formatMinutes(totalPaid)} accent />
       </div>
 
       <Panel className="mb-6" title="Day">
@@ -168,9 +168,10 @@ export default async function AttendancePage({ searchParams }: PageProps<'/atten
 
 function Summary({ icon, label, value, sub, accent }: { icon: React.ReactNode; label: string; value: string; sub?: string; accent?: boolean }) {
   return (
-    <div className={cn('surface rise-in rounded-2xl px-4 py-3', accent && 'ring-1 ring-primary/30')}>
-      <p className="eyebrow flex items-center gap-1.5 [&_svg]:size-3.5">{icon}{label}</p>
-      <p className={cn('mt-2 font-display text-xl font-light tracking-tight whitespace-nowrap tabular-nums sm:text-[1.75rem]', accent && 'text-primary')}>
+    <div className={cn('surface rise-in relative overflow-hidden rounded-2xl px-4 py-3', accent && 'ring-1 ring-primary/30')}>
+      <GhostIcon>{icon}</GhostIcon>
+      <p className="eyebrow relative">{label}</p>
+      <p className={cn('relative mt-2 font-display text-xl font-light tracking-tight whitespace-nowrap tabular-nums sm:text-[1.75rem]', accent && 'text-primary')}>
         <Measure>{value}</Measure>
         {sub && <span className="ml-1 text-sm font-normal text-muted-foreground">{sub}</span>}
       </p>

@@ -48,10 +48,23 @@ export function PersonAvatar({
   )
 }
 
+/** A large, faint icon tucked into a KPI tile's corner. Decorative; the tile needs `relative overflow-hidden`. */
+export function GhostIcon({ children }: { children: ReactNode }) {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute -right-3 -bottom-5 -rotate-12 text-foreground/[0.06] [&_svg]:size-24 [&_svg]:stroke-[1.5]"
+    >
+      {children}
+    </span>
+  )
+}
+
 export function StatCard({
   label,
   value,
   hint,
+  icon,
   visual,
   href,
 }: {
@@ -59,23 +72,26 @@ export function StatCard({
   value: ReactNode
   /** Plain content only when `href` is set: the whole card is already a link. */
   hint?: ReactNode
+  /** Shown large and faint in the corner, behind the figures. */
+  icon?: ReactNode
   /** Sparkline, ring or similar shown on the right. */
   visual?: ReactNode
   /** Makes the card a link to the page with the details. */
   href?: string
 }) {
   const className = cn(
-    'surface rise-in flex items-end gap-3 rounded-2xl p-4 sm:p-5',
+    'surface rise-in relative flex items-end gap-3 overflow-hidden rounded-2xl p-4 sm:p-5',
     href && 'hoverable outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
   )
   const body = (
     <>
-      <div className="min-w-0 flex-1">
+      {icon && <GhostIcon>{icon}</GhostIcon>}
+      <div className="relative min-w-0 flex-1">
         <p className="eyebrow truncate">{label}</p>
         <p className="mt-3 font-display text-[2.1rem] leading-none font-light tracking-tight tabular-nums">{value}</p>
         {hint && <div className="mt-2.5 truncate text-xs text-muted-foreground">{hint}</div>}
       </div>
-      {visual && <div className="shrink-0 max-[479px]:hidden">{visual}</div>}
+      {visual && <div className="relative shrink-0 max-[479px]:hidden">{visual}</div>}
     </>
   )
   return href ? (

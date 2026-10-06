@@ -2,13 +2,14 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ViewTransition } from 'react'
-import { CalendarCheckIcon, FingerprintIcon, Trash2Icon } from 'lucide-react'
+import { BadgePoundSterlingIcon, CalendarCheckIcon, ClockIcon, FingerprintIcon, PoundSterlingIcon, Trash2Icon } from 'lucide-react'
 import { HoursChart } from '@/components/charts'
 import { ActionButton, Field, FormDialog } from '@/components/forms'
 import { EmptyState, Panel, PersonAvatar, StatCard } from '@/components/people'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { addPayRate, deletePayRate, updateEmployee } from '@/lib/actions/employees'
+import { saveUsualWeek } from '@/lib/actions/rota'
 import {
   formatDuration,
   formatMinutes,
@@ -20,8 +21,9 @@ import {
   shiftDate,
 } from '@/lib/format'
 import { createClient } from '@/lib/supabase/server'
-import type { DailySummary, Employee, LeaveRequest, PayRate, WageRow } from '@/lib/types'
+import type { DailySummary, Employee, LeaveRequest, PayRate, ShiftPattern, WageRow } from '@/lib/types'
 import { EditEmployeeDialog } from '../employee-form'
+import { UsualWeekForm } from './usual-week-form'
 
 export const metadata: Metadata = { title: 'Employee' }
 
@@ -35,17 +37,19 @@ export default async function EmployeePage({ params }: PageProps<'/employees/[id
   const { data: employee } = await supabase.from('employees').select('*').eq('id', id).maybeSingle<Employee>()
   if (!employee) notFound()
 
-  const [ratesRes, daysRes, leaveRes, wageRes] = await Promise.all([
+  const [ratesRes, daysRes, leaveRes, wageRes, patternsRes] = await Promise.all([
     supabase.from('pay_rates').select('*').eq('employee_id', id).order('effective_from', { ascending: false }),
     supabase.from('daily_summary').select('*').eq('employee_id', id).gte('work_date', from).order('work_date', { ascending: false }),
     supabase.from('leave_requests').select('*').eq('employee_id', id).order('start_date', { ascending: false }).limit(10),
     supabase.rpc('wage_report', { p_from: monthStart, p_to: today }),
+    supabase.from('shift_patterns').select('*').eq('employee_id', id).order('weekday'),
   ])
 
   const rates = (ratesRes.data ?? []) as PayRate[]
   const days = (daysRes.data ?? []) as DailySummary[]
   const leave = (leaveRes.data ?? []) as LeaveRequest[]
   const wage = ((wageRes.data ?? []) as WageRow[]).find((w) => w.employee_id === id)
+  const patterns = (patternsRes.data ?? []) as ShiftPattern[]
 
   const byDate = new Map(days.map((d) => [d.work_date, d]))
   const chart = Array.from({ length: 30 }, (_, i) => {
@@ -88,10 +92,10 @@ export default async function EmployeePage({ params }: PageProps<'/employees/[id
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Usual day" value={formatMinutes(employee.daily_minutes)} hint={employee.daily_minutes == null ? 'Paid for time worked' : 'Set by you'} />
-        <StatCard label="Paid this month" value={formatMinutes(Number(wage?.paid_minutes ?? 0))} hint={`${wage?.days_worked ?? 0} days worked`} />
-        <StatCard label="Earned this month" value={formatPence(Number(wage?.gross_pence ?? 0))} hint="Gross, before tax" />
-        <StatCard label="Current rate" value={rates[0] ? formatPence(rates.find((r) => r.effective_from <= today)?.hourly_rate_pence ?? rates[0].hourly_rate_pence) : '—'} hint="per hour" />
+        <StatCard icon={<ClockIcon />} label="Usual day" value={formatMinutes(employee.daily_minutes)} hint={employee.daily_minutes == null ? 'Paid for time worked' : 'Set by you'} />
+        <StatCard icon={<CalendarCheckIcon />} label="Paid this month" value={formatMinutes(Number(wage?.paid_minutes ?? 0))} hint={`${wage?.days_worked ?? 0} days worked`} />
+        <StatCard icon={<PoundSterlingIcon />} label="Earned this month" value={formatPence(Number(wage?.gross_pence ?? 0))} hint="Gross, before tax" />
+        <StatCard icon={<BadgePoundSterlingIcon />} label="Current rate" value={rates[0] ? formatPence(rates.find((r) => r.effective_from <= today)?.hourly_rate_pence ?? rates[0].hourly_rate_pence) : '—'} hint="per hour" />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[1fr_360px]">
@@ -140,6 +144,10 @@ export default async function EmployeePage({ params }: PageProps<'/employees/[id
         </div>
 
         <div className="grid h-fit gap-6">
+          <Panel title="Usual week" info="Fill rota on the Rota page uses this to add their shifts. Leave a day empty if they don't work it.">
+            <UsualWeekForm patterns={patterns} action={saveUsualWeek.bind(null, id)} />
+          </Panel>
+
           <Panel
             title="Pay rates"
             actions={

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { differenceInCalendarDays, format, parseISO, addDays } from 'date-fns'
-import { AlertTriangleIcon, DownloadIcon, PoundSterlingIcon, UsersIcon } from 'lucide-react'
+import { AlertTriangleIcon, ClockIcon, DownloadIcon, PoundSterlingIcon, TimerIcon, UsersIcon } from 'lucide-react'
 import { WagesChart } from '@/components/charts'
 import { CountUp } from '@/components/count-up'
 import { EmptyState, PageHeader, Panel, PersonAvatar, StatCard } from '@/components/people'
@@ -144,17 +144,20 @@ export default async function WagesPage({ searchParams }: PageProps<'/wages'>) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard
           label="Paid hours"
+          icon={<ClockIcon />}
           value={<CountUp value={totals.paid} format="minutes" />}
           hint={<Delta current={totals.paid} previous={prevTotals.paid} suffix={compareLabel} />}
         />
         <StatCard
           label="On the clock"
+          icon={<TimerIcon />}
           value={<CountUp value={Math.floor(totals.worked / 60)} format="minutes" />}
           hint={unpaidHint(Math.floor(totals.worked / 60) - totals.paid)}
          
         />
         <StatCard
           label="Per paid hour"
+          icon={<PoundSterlingIcon />}
           value={totals.paid > 0 ? formatPence(Math.round((totals.gross / totals.paid) * 60)) : '—'}
           hint={`${rows.filter((r) => r.paid_minutes > 0).length} employees paid`}
          

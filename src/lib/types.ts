@@ -78,6 +78,15 @@ export type Shift = {
   note: string | null
 }
 
+/** One slot of someone's usual week. weekday: 1 = Monday ... 7 = Sunday; times are "HH:MM:SS" UK local. */
+export type ShiftPattern = {
+  id: string
+  employee_id: string
+  weekday: number
+  start_time: string
+  end_time: string
+}
+
 export type LeaveType = 'annual' | 'sick' | 'unpaid' | 'other'
 export type LeaveStatus = 'pending' | 'approved' | 'declined' | 'cancelled'
 

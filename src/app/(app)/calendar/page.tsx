@@ -7,12 +7,13 @@ import { EmptyState, PageHeader, Panel, PersonAvatar } from '@/components/people
 import { HoursBar } from '@/components/visuals'
 import { Button } from '@/components/ui/button'
 import { deleteShift } from '@/lib/actions/schedule'
-import { TZ, formatDuration, formatMinutes, isDateString, londonTime, londonToday, prettyDate } from '@/lib/format'
+import { TZ, formatDuration, formatMinutes, isDateString, londonTime, londonToday, prettyDate, shiftDate } from '@/lib/format'
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 import type { CalendarDay, DailySummary, Employee, LeaveRequest, Shift } from '@/lib/types'
 import { TZDate } from '@date-fns/tz'
 import { AddShiftForm } from './add-shift-form'
+import { CopyWeekDialog, FillRotaDialog } from './bulk-rota'
 
 export const metadata: Metadata = { title: 'Rota' }
 
@@ -43,12 +44,13 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd }).map((d) => format(d, 'yyyy-MM-dd'))
 
   const supabase = await createClient()
-  const [employeesRes, calRes, shiftsRes, leaveRes, workedRes] = await Promise.all([
+  const [employeesRes, calRes, shiftsRes, leaveRes, workedRes, patternsRes] = await Promise.all([
     supabase.from('employees').select('*').order('full_name'),
     supabase.rpc('calendar_summary', { p_from: from, p_to: to }),
     supabase.from('shifts').select('*').gte('shift_date', from).lte('shift_date', to).order('starts_at'),
     supabase.from('leave_requests').select('*').eq('status', 'approved').lte('start_date', to).gte('end_date', from),
     supabase.from('daily_summary').select('*').gte('work_date', from).lte('work_date', to),
+    supabase.from('shift_patterns').select('employee_id'),
   ])
 
   const employees = (employeesRes.data ?? []) as Employee[]
@@ -57,6 +59,11 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
   const shifts = (shiftsRes.data ?? []) as Shift[]
   const leave = (leaveRes.data ?? []) as LeaveRequest[]
   const worked = ((workedRes.data ?? []) as DailySummary[]).filter((d) => d.worked_seconds > 0)
+  // Bulk tools: who can be filled from a usual week, and the week of the selected day for copying.
+  const withPattern = new Set(((patternsRes.data ?? []) as { employee_id: string }[]).map((p) => p.employee_id))
+  const fillPeople = employees.filter((e) => e.active && withPattern.has(e.id)).map((e) => ({ id: e.id, name: e.full_name }))
+  const selectedWeek = format(startOfWeek(parseISO(selected), { weekStartsOn: 1 }), 'yyyy-MM-dd')
+  const selectedWeekShifts = shifts.filter((s) => s.shift_date >= selectedWeek && s.shift_date <= shiftDate(selectedWeek, 6)).length
 
   const hoursFor = (day: string) => {
     const d = cal.get(day)
@@ -95,18 +102,22 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
       <PageHeader
         title="Rota"
         actions={
-          <div className="surface flex items-center gap-1 rounded-xl p-1">
-            <Button variant="ghost" size="icon-sm" nativeButton={false} render={<Link href={`/calendar?month=${prev}`} aria-label="Previous month" />}>
-              <ChevronLeftIcon />
-            </Button>
-            <span className="w-32 text-center text-sm font-semibold">{format(monthStart, 'MMMM yyyy')}</span>
-            <Button variant="ghost" size="icon-sm" nativeButton={false} render={<Link href={`/calendar?month=${next}`} aria-label="Next month" />}>
-              <ChevronRightIcon />
-            </Button>
-            {month !== today.slice(0, 7) && (
-              <Button variant="secondary" size="sm" nativeButton={false} render={<Link href="/calendar" />}>Today</Button>
-            )}
-          </div>
+          <>
+            <FillRotaDialog from={today} to={shiftDate(today, 27)} people={fillPeople} />
+            <CopyWeekDialog week={selectedWeek} label={`week of ${prettyDate(selectedWeek, 'EEE d MMM')}`} shifts={selectedWeekShifts} />
+            <div className="surface flex items-center gap-1 rounded-xl p-1">
+              <Button variant="ghost" size="icon-sm" nativeButton={false} render={<Link href={`/calendar?month=${prev}`} aria-label="Previous month" />}>
+                <ChevronLeftIcon />
+              </Button>
+              <span className="w-32 text-center text-sm font-semibold">{format(monthStart, 'MMMM yyyy')}</span>
+              <Button variant="ghost" size="icon-sm" nativeButton={false} render={<Link href={`/calendar?month=${next}`} aria-label="Next month" />}>
+                <ChevronRightIcon />
+              </Button>
+              {month !== today.slice(0, 7) && (
+                <Button variant="secondary" size="sm" nativeButton={false} render={<Link href="/calendar" />}>Today</Button>
+              )}
+            </div>
+          </>
         }
       />
 

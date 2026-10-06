@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import { ViewTransition } from 'react'
-import { AlarmClockIcon, ClockIcon, FingerprintIcon, UserPlusIcon } from 'lucide-react'
+import { AlarmClockIcon, CalendarClockIcon, ClockIcon, FingerprintIcon, PalmtreeIcon, TimerIcon, UserPlusIcon, UsersIcon } from 'lucide-react'
 import { HoursChart } from '@/components/charts'
 import { CountUp } from '@/components/count-up'
 import { PunchMenu, WorkingCard } from '@/components/dashboard-cards'
 import { LiveRefresh } from '@/components/live'
-import { EmptyState, GroupLabel, InfoTip, PageHeader, Panel, PersonAvatar } from '@/components/people'
+import { EmptyState, GhostIcon, GroupLabel, InfoTip, PageHeader, Panel, PersonAvatar } from '@/components/people'
 import { DayTimeline } from '@/components/timeline'
 import { Delta, HoursBar } from '@/components/visuals'
 import { Button } from '@/components/ui/button'
@@ -122,6 +122,7 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-2 gap-px border-t bg-border xl:grid-cols-4">
           <Figure
             label="Clocked in"
+            icon={<UsersIcon />}
             href="/attendance"
             value={
               <>
@@ -133,18 +134,21 @@ export default async function DashboardPage() {
           />
           <Figure
             label="Worked today"
+            icon={<TimerIcon />}
             href="/attendance"
             value={<CountUp value={Math.floor(workedToday / 60)} format="minutes" />}
             hint={workedLastWeek > 0 ? <Delta current={workedToday} previous={workedLastWeek} suffix="vs last week" /> : 'All staff'}
           />
           <Figure
             label="On the rota"
+            icon={<CalendarClockIcon />}
             href="/calendar"
             value={<CountUp value={scheduledPeople.size} />}
             hint={nextShift ? `Next: ${nextShift.e.full_name.split(' ')[0]} at ${londonTime(nextShift.shift.starts_at)}` : `${shifts.length} shift${shifts.length === 1 ? '' : 's'}`}
           />
           <Figure
             label="On holiday"
+            icon={<PalmtreeIcon />}
             href="/leave"
             value={<CountUp value={onLeave.size} />}
             hint={
@@ -307,11 +311,12 @@ export default async function DashboardPage() {
 }
 
 /** One headline figure in the "Today" strip, linking to the page with the detail. */
-function Figure({ label, value, hint, href }: { label: string; value: React.ReactNode; hint?: React.ReactNode; href: string }) {
+function Figure({ label, value, hint, href, icon }: { label: string; value: React.ReactNode; hint?: React.ReactNode; href: string; icon: React.ReactNode }) {
   return (
-    <Link href={href} className="flex min-w-0 flex-col gap-2 bg-card px-4 py-4 transition-colors hover:bg-muted/50 sm:px-6">
-      <span className="eyebrow">{label}</span>
-      <span className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+    <Link href={href} className="relative flex min-w-0 flex-col gap-2 overflow-hidden bg-card px-4 py-4 transition-colors hover:bg-muted/50 sm:px-6">
+      <GhostIcon>{icon}</GhostIcon>
+      <span className="eyebrow relative">{label}</span>
+      <span className="relative flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="shrink-0 font-display text-[1.75rem] leading-none font-light tracking-tight whitespace-nowrap tabular-nums">{value}</span>
         {hint && <span className="max-w-full min-w-0 truncate text-xs text-muted-foreground">{hint}</span>}
       </span>
