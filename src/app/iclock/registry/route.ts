@@ -1,4 +1,4 @@
-import { clientIp, logRequest, registryResponse, serialFrom, text, touchDevice } from '@/lib/adms'
+import { logRequest, registryResponse, serialFrom, text, touchDevice } from '@/lib/adms'
 
 // Push 3.x terminals register before uploading. The body lists the terminal's capabilities; we only log it.
 export async function POST(request: Request) {
@@ -6,7 +6,7 @@ export async function POST(request: Request) {
   const serial = serialFrom(request)
   if (!serial) return text('ERROR: missing SN', 400)
 
-  const { configured } = await touchDevice(serial, clientIp(request))
+  const { configured } = await touchDevice(request, serial)
   if (!configured) return text('ERROR: server not configured', 503)
   return text(registryResponse(serial))
 }

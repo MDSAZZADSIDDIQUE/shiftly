@@ -18,7 +18,7 @@ export type BulkResult = ActionResult & { message?: string; created?: string[] }
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
 /** A shift to add, in UK local time. An end at or before the start runs past midnight. */
-type Candidate = { employee_id: string; date: string; start: string; end: string; note: string | null }
+type Candidate = { employee_id: string; branch_id: string | null; date: string; start: string; end: string; note: string | null }
 
 /**
  * Adds many shifts at once. Skips anything in the past, anyone on approved holiday that day,
@@ -87,7 +87,9 @@ async function addShifts(supabase: Supabase, candidates: Candidate[]): Promise<B
   if (accepted.length > 0) {
     const { data, error } = await supabase
       .from('shifts')
-      .insert(accepted.map((r) => ({ employee_id: r.employee_id, starts_at: r.starts_at, ends_at: r.ends_at, note: r.note })))
+      .insert(
+        accepted.map((r) => ({ employee_id: r.employee_id, branch_id: r.branch_id, starts_at: r.starts_at, ends_at: r.ends_at, note: r.note }))
+      )
       .select('id')
     if (error) return done(error)
     created = (data ?? []).map((d: { id: string }) => d.id)
@@ -100,22 +102,26 @@ async function addShifts(supabase: Supabase, candidates: Candidate[]): Promise<B
   return { ok: true, message: parts.join(' · '), created }
 }
 
-/** Fill the rota from everyone's usual week (or one person's) for a date range. */
+/** Fill the rota from everyone's usual week (or one person's) for a date range; with a branch, only that branch's. */
 export async function fillRota(form: FormData): Promise<BulkResult> {
   const from = str(form, 'from')
   const to = str(form, 'to')
   const employeeId = str(form, 'employee_id')
+  const branchId = str(form, 'branch_id')
   if (!isDateString(from) || !isDateString(to)) return { error: 'Choose the dates to fill.' }
   if (to < from) return { error: 'The end date must be on or after the start date.' }
   if (to < londonToday()) return { error: 'Those dates are already over.' }
   if (differenceInCalendarDays(parseISO(to), parseISO(from)) + 1 > MAX_DAYS) return { error: `Fill up to ${MAX_DAYS} days at a time.` }
 
   const supabase = await createClient()
-  let query = supabase.from('shift_patterns').select('*, employees!inner(active)').eq('employees.active', true)
+  let query = supabase.from('shift_patterns').select('*, employees!inner(active, branch_id)').eq('employees.active', true)
   if (employeeId) query = query.eq('employee_id', employeeId)
   const { data, error } = await query
   if (error) return { error: error.message }
-  const patterns = data as ShiftPattern[]
+  // A usual-week slot without a branch is worked at the person's home branch.
+  const patterns = (data as (ShiftPattern & { employees: { branch_id: string | null } })[])
+    .map((p) => ({ ...p, branch_id: p.branch_id ?? p.employees.branch_id }))
+    .filter((p) => !branchId || p.branch_id === branchId)
   if (patterns.length === 0) {
     return { error: employeeId ? 'They have no usual week yet. Set one on their profile.' : 'Nobody has a usual week yet. Set one on each staff profile.' }
   }
@@ -125,27 +131,37 @@ export async function fillRota(form: FormData): Promise<BulkResult> {
     const weekday = getISODay(parseISO(date))
     for (const p of patterns) {
       if (p.weekday === weekday) {
-        candidates.push({ employee_id: p.employee_id, date, start: p.start_time.slice(0, 5), end: p.end_time.slice(0, 5), note: null })
+        candidates.push({
+          employee_id: p.employee_id,
+          branch_id: p.branch_id,
+          date,
+          start: p.start_time.slice(0, 5),
+          end: p.end_time.slice(0, 5),
+          note: null,
+        })
       }
     }
   }
   return addShifts(supabase, candidates)
 }
 
-/** Copy the week starting `week` (a Monday) forward by 1 to 4 weeks. */
+/** Copy the week starting `week` (a Monday) forward by 1 to 4 weeks; with a branch, only that branch's shifts. */
 export async function copyWeek(form: FormData): Promise<BulkResult> {
   const week = str(form, 'week')
   const times = Number(str(form, 'weeks'))
+  const branchId = str(form, 'branch_id')
   if (!isDateString(week) || getISODay(parseISO(week)) !== 1) return { error: 'Choose a week to copy.' }
   if (!Number.isInteger(times) || times < 1 || times > 4) return { error: 'Copy forward 1 to 4 weeks.' }
 
   const supabase = await createClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from('shifts')
     .select('*, employees!inner(active)')
     .eq('employees.active', true)
     .gte('shift_date', week)
     .lte('shift_date', shiftDate(week, 6))
+  if (branchId) query = query.eq('branch_id', branchId)
+  const { data, error } = await query
   if (error) return { error: error.message }
   const source = data as Shift[]
   if (source.length === 0) return { error: 'That week has no shifts to copy.' }
@@ -155,6 +171,7 @@ export async function copyWeek(form: FormData): Promise<BulkResult> {
     for (const s of source) {
       candidates.push({
         employee_id: s.employee_id,
+        branch_id: s.branch_id,
         date: shiftDate(s.shift_date, 7 * k),
         // Wall-clock times, so a copy across a clock change still starts at 08:00.
         // A shift that ran past midnight comes back the same way (its end is before its start).
@@ -175,16 +192,16 @@ export async function undoShifts(ids: string[]): Promise<ActionResult> {
   return done(error)
 }
 
-/** Replace someone's usual week. Each weekday has an optional start and end time. */
+/** Replace someone's usual week. Each weekday has an optional start and end time, and a branch. */
 export async function saveUsualWeek(employeeId: string, form: FormData): Promise<ActionResult> {
-  const rows: { employee_id: string; weekday: number; start_time: string; end_time: string }[] = []
+  const rows: { employee_id: string; branch_id: string | null; weekday: number; start_time: string; end_time: string }[] = []
   for (let weekday = 1; weekday <= 7; weekday++) {
     const start = str(form, `start_${weekday}`)
     const end = str(form, `end_${weekday}`)
     if (!start && !end) continue
     if (!TIME.test(start) || !TIME.test(end)) return { error: `Add a start and end time for ${DAYS[weekday - 1]}, or leave both empty.` }
     if (start === end) return { error: `${DAYS[weekday - 1]} starts and ends at the same time.` }
-    rows.push({ employee_id: employeeId, weekday, start_time: start, end_time: end })
+    rows.push({ employee_id: employeeId, branch_id: str(form, `branch_${weekday}`) || null, weekday, start_time: start, end_time: end })
   }
 
   const supabase = await createClient()

@@ -28,6 +28,7 @@ import {
   requestTime,
   shiftDate,
 } from '@/lib/format'
+import { getBranches, openingHoursOn, requireBusiness } from '@/lib/business'
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 import type { AttendanceSession, DailySummary, Employee, LeaveRequest, Shift, WageRow } from '@/lib/types'
@@ -80,6 +81,8 @@ function countdown(fromMs: number, toMs: number) {
 }
 
 export default async function MePage() {
+  const business = await requireBusiness()
+  const branches = await getBranches(business.id)
   const supabase = await createClient()
   const today = londonToday()
   const now = requestTime()
@@ -133,6 +136,9 @@ export default async function MePage() {
   const todaySummary = dayByDate.get(today)
   const target = todaySummary?.approved_minutes ?? employee.daily_minutes
   const todayShifts = shifts.filter((s) => s.shift_date === today)
+  // Today's opening hours are those of the branch they're rota'd at, else their home branch.
+  const todayBranchId = todayShifts[0]?.branch_id ?? employee.branch_id
+  const todayHours = openingHoursOn(today, branches.filter((b) => b.id === todayBranchId))
   const upcoming = shifts.filter((s) => new Date(s.ends_at).getTime() > now)
   const nextShift = upcoming.find((s) => new Date(s.starts_at).getTime() > now)
   const workedToday = (todaySummary?.worked_seconds ?? 0) > 0 || !!open
@@ -222,7 +228,8 @@ export default async function MePage() {
           </div>
           {(todayShifts.length > 0 || workedToday) && (
             <div className="border-t px-4 pt-4 pb-3 sm:px-5">
-              <DayTimeline date={today} employees={[employee]} sessions={sessions} shifts={todayShifts} nowIso={nowIso} isToday />
+              <DayTimeline date={today} employees={[employee]} sessions={sessions} shifts={todayShifts} nowIso={nowIso} isToday
+                openHours={todayHours} placeWord={business.place_word} />
             </div>
           )}
         </section>

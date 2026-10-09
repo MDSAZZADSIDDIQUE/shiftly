@@ -21,7 +21,8 @@ import {
   requestTime,
   shiftDate,
 } from '@/lib/format'
-import { STORE } from '@/lib/store'
+import { peopleAtBranch } from '@/lib/branch-scope'
+import { getBranches, getSelectedBranch, openingHoursOn, requireBusiness } from '@/lib/business'
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 import type { AttendanceSession, CalendarDay, DailySummary, Employee, LeaveRequest, Punch, Shift } from '@/lib/types'
@@ -33,33 +34,72 @@ function sessionSeconds(s: AttendanceSession, until: number) {
   return Math.max(0, (end - new Date(s.clock_in).getTime()) / 1000)
 }
 
+/** Worked and paid time per day over the last 14 days for the staff based at one branch. */
+function branchTrend(
+  today: string,
+  branchId: string,
+  employees: Employee[],
+  days: Pick<DailySummary, 'employee_id' | 'work_date' | 'worked_seconds' | 'paid_minutes'>[]
+): CalendarDay[] {
+  const based = new Set(employees.filter((e) => e.branch_id === branchId).map((e) => e.id))
+  return Array.from({ length: 14 }, (_, i) => {
+    const day = shiftDate(today, i - 13)
+    const mine = days.filter((d) => d.work_date === day && based.has(d.employee_id))
+    return {
+      day,
+      employees_worked: mine.filter((d) => d.worked_seconds > 0).length,
+      worked_seconds: mine.reduce((sum, d) => sum + d.worked_seconds, 0),
+      paid_minutes: mine.reduce((sum, d) => sum + d.paid_minutes, 0),
+      shifts: 0,
+      scheduled_minutes: 0,
+      on_leave: 0,
+    }
+  })
+}
+
 export default async function DashboardPage() {
+  const business = await requireBusiness()
+  const [branches, branch] = await Promise.all([getBranches(business.id), getSelectedBranch(business.id)])
   const supabase = await createClient()
   const today = londonToday()
   const now = requestTime()
   const nowIso = new Date(now).toISOString()
 
-  const [employeesRes, summaryRes, sessionsRes, shiftsRes, leaveRes, trendRes, punchesRes, lastWeekRes, pendingRes] =
+  let shiftsQuery = supabase.from('shifts').select('*').eq('shift_date', today).order('starts_at')
+  if (branch) shiftsQuery = shiftsQuery.eq('branch_id', branch.id)
+
+  const [employeesRes, summaryRes, sessionsRes, shiftsRes, leaveRes, trendRes, punchesRes, lastWeekRes, pendingRes, branchDaysRes, devicesRes] =
     await Promise.all([
       supabase.from('employees').select('*').eq('active', true).order('full_name'),
       supabase.from('daily_summary').select('*').eq('work_date', today),
       supabase.from('attendance_sessions').select('*').eq('work_date', today).order('clock_in'),
-      supabase.from('shifts').select('*').eq('shift_date', today).order('starts_at'),
+      shiftsQuery,
       supabase.from('leave_requests').select('*').eq('status', 'approved').lte('start_date', today).gte('end_date', today),
       supabase.rpc('calendar_summary', { p_from: shiftDate(today, -13), p_to: today }),
-      supabase.from('punches').select('*').order('punched_at', { ascending: false }).limit(8),
+      supabase.from('punches').select('*').order('punched_at', { ascending: false }).limit(branch ? 40 : 8),
       supabase.from('attendance_sessions').select('*').eq('work_date', shiftDate(today, -7)),
       supabase.from('leave_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      // At one branch, the 14-day chart is built from its own staff's days instead of the business-wide summary.
+      branch
+        ? supabase.from('daily_summary').select('employee_id, work_date, worked_seconds, paid_minutes').gte('work_date', shiftDate(today, -13))
+        : null,
+      branch ? supabase.from('devices').select('id, branch_id') : null,
     ])
 
-  const employees = (employeesRes.data ?? []) as Employee[]
-  const summary = (summaryRes.data ?? []) as DailySummary[]
-  const sessions = (sessionsRes.data ?? []) as AttendanceSession[]
   const shifts = (shiftsRes.data ?? []) as Shift[]
-  const leave = (leaveRes.data ?? []) as LeaveRequest[]
-  const trend = (trendRes.data ?? []) as CalendarDay[]
-  const punches = (punchesRes.data ?? []) as Punch[]
-  const lastWeek = (lastWeekRes.data ?? []) as AttendanceSession[]
+  const allSessions = (sessionsRes.data ?? []) as AttendanceSession[]
+  const employees = peopleAtBranch((employeesRes.data ?? []) as Employee[], branch?.id ?? null, shifts, allSessions)
+  const shown = new Set(employees.map((e) => e.id))
+  const summary = ((summaryRes.data ?? []) as DailySummary[]).filter((x) => shown.has(x.employee_id))
+  const sessions = allSessions.filter((x) => shown.has(x.employee_id))
+  const leave = ((leaveRes.data ?? []) as LeaveRequest[]).filter((l) => shown.has(l.employee_id))
+  const trend = branch ? branchTrend(today, branch.id, (employeesRes.data ?? []) as Employee[], branchDaysRes?.data ?? []) : ((trendRes.data ?? []) as CalendarDay[])
+  // An unrecognised finger has no employee: at one branch, show it if it was scanned on that branch's terminal.
+  const deviceBranch = new Map(((devicesRes?.data ?? []) as { id: string; branch_id: string | null }[]).map((d) => [d.id, d.branch_id]))
+  const punches = ((punchesRes.data ?? []) as Punch[]).filter((x) =>
+    x.employee_id ? shown.has(x.employee_id) : !branch || deviceBranch.get(x.device_id ?? '') === branch.id
+  )
+  const lastWeek = ((lastWeekRes.data ?? []) as AttendanceSession[]).filter((x) => shown.has(x.employee_id))
   const pendingLeave = pendingRes.count ?? 0
 
   const byId = new Map(employees.map((e) => [e.id, e]))
@@ -106,7 +146,7 @@ export default async function DashboardPage() {
     <>
       <PageHeader
         title="Today"
-        description={`${prettyDate(today, 'EEEE d MMMM')} · ${STORE.name}`}
+        description={`${prettyDate(today, 'EEEE d MMMM')} · ${branch?.name ?? business.name}`}
         actions={<LiveRefresh />}
       />
 
@@ -117,7 +157,8 @@ export default async function DashboardPage() {
           <InfoTip>Solid bars are time worked, dashed outlines are scheduled shifts, and the brass line is now.</InfoTip>
         </header>
         <div className="px-4 pt-3 pb-5 sm:px-6">
-          <DayTimeline date={today} employees={employees} sessions={sessions} shifts={shifts} nowIso={nowIso} isToday size="lg" />
+          <DayTimeline date={today} employees={employees} sessions={sessions} shifts={shifts} nowIso={nowIso} isToday size="lg"
+            openHours={openingHoursOn(today, branch ? [branch] : branches)} placeWord={business.place_word} />
         </div>
         <div className="grid grid-cols-2 gap-px border-t bg-border xl:grid-cols-4">
           <Figure
@@ -275,7 +316,7 @@ export default async function DashboardPage() {
             </EmptyState>
           ) : (
             <ol className="relative grid gap-2 before:absolute before:inset-y-2 before:left-3.5 before:w-px before:bg-border">
-              {punches.map((p) => {
+              {punches.slice(0, 8).map((p) => {
                 const e = p.employee_id ? byId.get(p.employee_id) : undefined
                 const isNew = now - new Date(p.punched_at).getTime() < 60_000
                 return (

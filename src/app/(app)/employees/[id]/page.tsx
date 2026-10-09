@@ -20,6 +20,7 @@ import {
   prettyDate,
   shiftDate,
 } from '@/lib/format'
+import { capitalise, getBranches, requireBusiness } from '@/lib/business'
 import { createClient } from '@/lib/supabase/server'
 import type { DailySummary, Employee, LeaveRequest, PayRate, ShiftPattern, WageRow } from '@/lib/types'
 import { EditEmployeeDialog } from '../employee-form'
@@ -33,9 +34,16 @@ export default async function EmployeePage({ params }: PageProps<'/employees/[id
   const from = shiftDate(today, -29)
   const monthStart = `${today.slice(0, 7)}-01`
 
+  const business = await requireBusiness()
   const supabase = await createClient()
-  const { data: employee } = await supabase.from('employees').select('*').eq('id', id).maybeSingle<Employee>()
+  const [{ data: employee }, branches] = await Promise.all([
+    supabase.from('employees').select('*').eq('id', id).maybeSingle<Employee>(),
+    getBranches(business.id),
+  ])
   if (!employee) notFound()
+  const branchOptions = branches.map((b) => ({ id: b.id, name: b.name }))
+  const branchLabel = capitalise(business.branch_word)
+  const homeBranch = branches.find((b) => b.id === employee.branch_id)
 
   const [ratesRes, daysRes, leaveRes, wageRes, patternsRes] = await Promise.all([
     supabase.from('pay_rates').select('*').eq('employee_id', id).order('effective_from', { ascending: false }),
@@ -84,11 +92,16 @@ export default async function EmployeePage({ params }: PageProps<'/employees/[id
               <FingerprintIcon className="size-3.5" />
               {employee.device_user_id ? `User #${employee.device_user_id}` : 'Not enrolled'}
             </span>
+            {homeBranch && branches.length > 1 && <span>{homeBranch.name}</span>}
             {employee.email && <span>{employee.email}</span>}
             {employee.phone && <span>{employee.phone}</span>}
           </p>
         </div>
-        <EditEmployeeDialog employee={employee} action={updateEmployee.bind(null, id)} />
+        <EditEmployeeDialog
+          employee={employee}
+          action={updateEmployee.bind(null, id)}
+          branch={{ branches: branchOptions, label: branchLabel, defaultId: null }}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -145,7 +158,13 @@ export default async function EmployeePage({ params }: PageProps<'/employees/[id
 
         <div className="grid h-fit gap-6">
           <Panel title="Usual week" info="Fill rota on the Rota page uses this to add their shifts. Leave a day empty if they don't work it.">
-            <UsualWeekForm patterns={patterns} action={saveUsualWeek.bind(null, id)} />
+            <UsualWeekForm
+              patterns={patterns}
+              action={saveUsualWeek.bind(null, id)}
+              branches={branchOptions}
+              branchLabel={branchLabel}
+              homeBranchId={employee.branch_id}
+            />
           </Panel>
 
           <Panel

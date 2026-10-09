@@ -1,5 +1,6 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
+import { requestHost, slugFromHost } from '@/lib/business'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
@@ -166,22 +167,32 @@ export function serialFrom(request: Request) {
   return sn && /^[A-Za-z0-9_-]{1,64}$/.test(sn) ? sn : null
 }
 
-/** Records that the terminal is online. Returns whether a manager has enabled it. */
-export async function touchDevice(serial: string, ip: string | null) {
-  const admin = createAdminClient()
-  if (!admin) return { configured: false, enabled: false }
-  const { data, error } = await admin.rpc('touch_device', { p_serial: serial, p_ip: ip })
-  if (error) throw error
-  return { configured: true, enabled: Boolean(data) }
+/** The business whose subdomain the terminal was pointed at; a new terminal is recorded under it. */
+function businessSlug(request: Request) {
+  return slugFromHost(requestHost(request.headers))
 }
 
-export async function ingestAttLog(serial: string, ip: string | null, rows: AttLogRow[]) {
+/** Records that the terminal is online. Returns whether a manager has enabled it. */
+export async function touchDevice(request: Request, serial: string) {
+  const admin = createAdminClient()
+  if (!admin) return { configured: false, enabled: false }
+  const { data, error } = await admin.rpc('touch_device', {
+    p_serial: serial,
+    p_ip: clientIp(request),
+    p_business_slug: businessSlug(request),
+  })
+  if (error) throw error
+  return { configured: true, enabled: Boolean(data?.enabled) }
+}
+
+export async function ingestAttLog(request: Request, serial: string, rows: AttLogRow[]) {
   const admin = createAdminClient()
   if (!admin) return { configured: false, count: 0 }
   const { data, error } = await admin.rpc('ingest_device_punches', {
     p_serial: serial,
-    p_ip: ip,
+    p_ip: clientIp(request),
     p_rows: rows,
+    p_business_slug: businessSlug(request),
   })
   if (error) throw error
   return { configured: true, count: Number(data ?? 0) }

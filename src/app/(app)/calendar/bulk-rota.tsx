@@ -82,20 +82,24 @@ export function FillRotaDialog({
   from,
   to,
   people,
+  branch,
 }: {
   from: string
   to: string
   /** Staff who have a usual week set. */
   people: { id: string; name: string }[]
+  /** The branch the Rota is showing: only its usual-week shifts are added. */
+  branch: { id: string; name: string } | null
 }) {
   return (
     <BulkDialog
-      title="Fill rota"
+      title={branch ? `Fill rota at ${branch.name}` : 'Fill rota'}
       description="Adds shifts from each person's usual week. Holidays and shifts already on the rota are left alone."
       trigger={<><WandSparklesIcon /> Fill rota</>}
       submitLabel="Fill rota"
       action={fillRota}
     >
+      {branch && <input type="hidden" name="branch_id" value={branch.id} />}
       <div className="grid grid-cols-2 gap-3">
         <Field label="From">
           <Input type="date" name="from" defaultValue={from} min={from} required />
@@ -116,16 +120,28 @@ export function FillRotaDialog({
   )
 }
 
-export function CopyWeekDialog({ week, label, shifts }: { week: string; label: string; shifts: number }) {
+export function CopyWeekDialog({
+  week,
+  label,
+  shifts,
+  branch,
+}: {
+  week: string
+  label: string
+  shifts: number
+  /** The branch the Rota is showing: only its shifts are copied. */
+  branch: { id: string; name: string } | null
+}) {
   return (
     <BulkDialog
-      title={`Copy ${label}`}
+      title={branch ? `Copy ${label} at ${branch.name}` : `Copy ${label}`}
       description={`Copies this week's ${shifts} shift${shifts === 1 ? '' : 's'} forward. Holidays and shifts already on the rota are left alone.`}
       trigger={<><CopyIcon /> Copy week</>}
       submitLabel="Copy"
       action={copyWeek}
     >
       <input type="hidden" name="week" value={week} />
+      {branch && <input type="hidden" name="branch_id" value={branch.id} />}
       <Field label="Copy to">
         <NativeSelect name="weeks" defaultValue="1">
           <option value="1">Next week</option>

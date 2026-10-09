@@ -6,6 +6,8 @@ export type Employee = {
   phone: string | null
   job_title: string | null
   device_user_id: string | null
+  /** Home branch; they can still be rota'd at any branch. */
+  branch_id: string | null
   daily_minutes: number | null
   color: string
   active: boolean
@@ -25,6 +27,7 @@ export type Device = {
   serial_number: string
   name: string | null
   enabled: boolean
+  branch_id: string | null
   timezone: string
   last_seen_at: string | null
   last_ip: string | null
@@ -48,6 +51,8 @@ export type AttendanceSession = {
   clock_in: string
   clock_out: string | null
   work_date: string
+  /** The terminal's branch; null for a manual clock in. */
+  branch_id: string | null
   edited: boolean
   note: string | null
 }
@@ -75,6 +80,7 @@ export type Shift = {
   starts_at: string
   ends_at: string
   shift_date: string
+  branch_id: string | null
   note: string | null
 }
 
@@ -83,6 +89,7 @@ export type ShiftPattern = {
   id: string
   employee_id: string
   weekday: number
+  branch_id: string | null
   start_time: string
   end_time: string
 }

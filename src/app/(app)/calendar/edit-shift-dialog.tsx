@@ -2,6 +2,7 @@
 
 import { PencilIcon } from 'lucide-react'
 import { Field, FormDialog, NativeSelect } from '@/components/forms'
+import { BranchField, type BranchOption } from '@/components/branch-field'
 import { Input } from '@/components/ui/input'
 import type { ActionResult } from '@/lib/types'
 
@@ -15,6 +16,9 @@ export function EditShiftDialog({
   end,
   note,
   employees,
+  branchId,
+  branches,
+  branchLabel,
 }: {
   action: (form: FormData) => Promise<ActionResult>
   name: string
@@ -24,6 +28,9 @@ export function EditShiftDialog({
   end: string
   note: string | null
   employees: { id: string; name: string }[]
+  branchId: string | null
+  branches: BranchOption[]
+  branchLabel: string
 }) {
   return (
     <FormDialog
@@ -40,6 +47,7 @@ export function EditShiftDialog({
           ))}
         </NativeSelect>
       </Field>
+      <BranchField branches={branches} label={branchLabel} defaultValue={branchId} />
       <Field label="Date">
         <Input type="date" name="date" defaultValue={date} required />
       </Field>

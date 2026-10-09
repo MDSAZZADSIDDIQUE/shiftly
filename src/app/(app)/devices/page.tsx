@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
-import { headers } from 'next/headers'
 import { formatDistanceToNow } from 'date-fns'
 import { FingerprintIcon, PlusIcon, Trash2Icon, WifiIcon, WifiOffIcon } from 'lucide-react'
 import { ActionButton, ActionForm, Field, FormDialog, SubmitButton } from '@/components/forms'
 import { EmptyState, PageHeader, Panel } from '@/components/people'
 import { Input } from '@/components/ui/input'
 import { addDevice, deleteDevice, updateDevice } from '@/lib/actions/devices'
+import { businessHost, capitalise, getBranches, requireBusiness, type Branch } from '@/lib/business'
 import { createClient } from '@/lib/supabase/server'
 import type { Device } from '@/lib/types'
 import { requestTime } from '@/lib/format'
@@ -13,16 +13,16 @@ import { requestTime } from '@/lib/format'
 export const metadata: Metadata = { title: 'Terminals' }
 
 export default async function DevicesPage() {
+  const business = await requireBusiness()
   const supabase = await createClient()
-  const [{ data }, h] = await Promise.all([
+  const [{ data }, branches] = await Promise.all([
     supabase.from('devices').select('*').order('created_at'),
-    headers(),
+    getBranches(business.id),
   ])
   const devices = (data ?? []) as Device[]
-  const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'your-server'
-  const [hostname, port] = host.split(':')
-  const deviceHost = process.env.DEVICE_SERVER_HOST || hostname
-  const devicePort = process.env.DEVICE_SERVER_PORT || port || '80'
+  // The terminal calls this business's own subdomain; that's how a new terminal is recorded under it.
+  const deviceHost = businessHost(business.slug)
+  const devicePort = process.env.DEVICE_SERVER_PORT || '80'
   const secretMissing = !process.env.SUPABASE_SECRET_KEY
   const now = requestTime()
 
@@ -43,6 +43,9 @@ export default async function DevicesPage() {
             </Field>
             <Field label="Name">
               <Input name="name" placeholder="Front door" />
+            </Field>
+            <Field label={capitalise(business.branch_word)}>
+              <BranchSelect branches={branches} defaultValue={branches.length === 1 ? branches[0].id : null} branchWord={business.branch_word} />
             </Field>
           </FormDialog>
         }
@@ -84,9 +87,13 @@ export default async function DevicesPage() {
                         </span>
                       )}
                       {!d.enabled && <span className="tone-amber rounded-full px-2 py-0.5 text-xs font-medium">Waiting for approval</span>}
+                      {!d.branch_id && branches.length > 1 && (
+                        <span className="tone-amber rounded-full px-2 py-0.5 text-xs font-medium">Which {business.branch_word}?</span>
+                      )}
                     </div>
                     <ActionForm action={updateDevice.bind(null, d.id)} successMessage="Saved" className="mt-3 flex flex-wrap items-center gap-3 border-t pt-3">
                       <Input name="name" defaultValue={d.name ?? ''} placeholder="Terminal name, e.g. Front door" aria-label="Terminal name" className="min-w-40 flex-1" />
+                      <BranchSelect branches={branches} defaultValue={d.branch_id} branchWord={business.branch_word} className="w-auto min-w-36" />
                       <label className="flex h-8 items-center gap-2 text-sm">
                         <input type="checkbox" name="enabled" defaultChecked={d.enabled} className="size-4 accent-primary" />
                         Accept scans
@@ -105,7 +112,7 @@ export default async function DevicesPage() {
 
         <Panel title="Connect a ZKTeco terminal" className="h-fit">
           <ol className="steps grid gap-3 text-sm">
-            <li>Connect the terminal to the shop Wi-Fi (or insert a 4G SIM).</li>
+            <li>Connect the terminal to the {business.place_word} Wi-Fi (or insert a 4G SIM).</li>
             <li>
               Open <strong>Menu → COMM → Cloud Server Setting</strong> (called <em>ADMS</em> on some models).
             </li>
@@ -127,5 +134,34 @@ export default async function DevicesPage() {
         </Panel>
       </div>
     </>
+  )
+}
+
+/** Where a terminal is; its clock ins are recorded at that branch. */
+function BranchSelect({
+  branches,
+  defaultValue,
+  branchWord,
+  className,
+}: {
+  branches: Branch[]
+  defaultValue: string | null
+  branchWord: string
+  className?: string
+}) {
+  return (
+    <select
+      name="branch_id"
+      defaultValue={defaultValue ?? ''}
+      aria-label={capitalise(branchWord)}
+      className={`h-8 rounded-lg border bg-transparent px-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring ${className ?? 'w-full'}`}
+    >
+      <option value="">Choose {branchWord}…</option>
+      {branches.map((b) => (
+        <option key={b.id} value={b.id}>
+          {b.name}
+        </option>
+      ))}
+    </select>
   )
 }

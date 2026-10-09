@@ -18,6 +18,8 @@ import {
   prettyDate,
   requestTime,
 } from '@/lib/format'
+import { peopleAtBranch } from '@/lib/branch-scope'
+import { getBranches, getSelectedBranch, openingHoursOn, requireBusiness } from '@/lib/business'
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 import type { AttendanceSession, DailySummary, Employee, LeaveRequest, Shift } from '@/lib/types'
@@ -44,21 +46,28 @@ export default async function AttendancePage({ searchParams }: PageProps<'/atten
   const today = londonToday()
   const date = isDateString(params.date) ? params.date : today
 
+  const business = await requireBusiness()
+  const [branches, branch] = await Promise.all([getBranches(business.id), getSelectedBranch(business.id)])
   const supabase = await createClient()
+  let shiftsQuery = supabase.from('shifts').select('*').eq('shift_date', date).order('starts_at')
+  if (branch) shiftsQuery = shiftsQuery.eq('branch_id', branch.id)
   const [employeesRes, summaryRes, sessionsRes, shiftsRes, leaveRes] = await Promise.all([
     supabase.from('employees').select('*').order('full_name'),
     supabase.from('daily_summary').select('*').eq('work_date', date),
     supabase.from('attendance_sessions').select('*').eq('work_date', date).order('clock_in'),
-    supabase.from('shifts').select('*').eq('shift_date', date).order('starts_at'),
+    shiftsQuery,
     supabase.from('leave_requests').select('*').eq('status', 'approved').lte('start_date', date).gte('end_date', date),
   ])
 
-  const summary = (summaryRes.data ?? []) as DailySummary[]
-  const sessions = (sessionsRes.data ?? []) as AttendanceSession[]
   const shifts = (shiftsRes.data ?? []) as Shift[]
+  const allSessions = (sessionsRes.data ?? []) as AttendanceSession[]
+  const atBranch = peopleAtBranch((employeesRes.data ?? []) as Employee[], branch?.id ?? null, shifts, allSessions)
+  const shown = new Set(atBranch.map((e) => e.id))
+  const summary = ((summaryRes.data ?? []) as DailySummary[]).filter((x) => shown.has(x.employee_id))
+  const sessions = allSessions.filter((x) => shown.has(x.employee_id))
   const leave = (leaveRes.data ?? []) as LeaveRequest[]
   const summaryById = new Map(summary.map((s) => [s.employee_id, s]))
-  const employees = ((employeesRes.data ?? []) as Employee[]).filter((e) => e.active || summaryById.has(e.id))
+  const employees = atBranch.filter((e) => e.active || summaryById.has(e.id))
   const now = requestTime()
 
   const rows: Row[] = employees.map((e) => {
@@ -106,7 +115,8 @@ export default async function AttendancePage({ searchParams }: PageProps<'/atten
       </div>
 
       <Panel className="mb-6" title="Day">
-        <DayTimeline date={date} employees={employees} sessions={sessions} shifts={shifts} nowIso={new Date(now).toISOString()} isToday={date === today} />
+        <DayTimeline date={date} employees={employees} sessions={sessions} shifts={shifts} nowIso={new Date(now).toISOString()} isToday={date === today}
+          openHours={openingHoursOn(date, branch ? [branch] : branches)} placeWord={business.place_word} />
       </Panel>
 
       <Panel

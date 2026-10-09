@@ -17,6 +17,7 @@ function employeeFields(form: FormData) {
       phone: optional(form, 'phone'),
       job_title: optional(form, 'job_title'),
       device_user_id: optional(form, 'device_user_id'),
+      branch_id: optional(form, 'branch_id'),
       daily_minutes: daily,
       color: str(form, 'color') || '#4f6d8f',
       started_on: isDateString(str(form, 'started_on')) ? str(form, 'started_on') : null,

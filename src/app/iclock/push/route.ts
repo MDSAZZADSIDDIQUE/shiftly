@@ -1,4 +1,4 @@
-import { clientIp, logRequest, pushOptionsResponse, serialFrom, text, touchDevice } from '@/lib/adms'
+import { logRequest, pushOptionsResponse, serialFrom, text, touchDevice } from '@/lib/adms'
 
 // After registering, push 3.x terminals ask here for their upload options.
 async function handle(request: Request) {
@@ -6,7 +6,7 @@ async function handle(request: Request) {
   const serial = serialFrom(request)
   if (!serial) return text('ERROR: missing SN', 400)
 
-  const { configured } = await touchDevice(serial, clientIp(request))
+  const { configured } = await touchDevice(request, serial)
   if (!configured) return text('ERROR: server not configured', 503)
   return text(pushOptionsResponse())
 }

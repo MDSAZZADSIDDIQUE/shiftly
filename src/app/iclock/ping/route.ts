@@ -1,4 +1,4 @@
-import { clientIp, serialFrom, text, touchDevice } from '@/lib/adms'
+import { serialFrom, text, touchDevice } from '@/lib/adms'
 
 // Push 3.x heartbeat. Not logged: it arrives every few seconds.
 export async function GET(request: Request) {
@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   if (!serial) return text('ERROR: missing SN', 400)
 
   try {
-    await touchDevice(serial, clientIp(request))
+    await touchDevice(request, serial)
   } catch (error) {
     console.error('[iclock] heartbeat failed', serial, error)
   }

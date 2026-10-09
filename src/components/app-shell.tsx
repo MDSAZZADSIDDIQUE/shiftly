@@ -14,6 +14,7 @@ import {
   PoundSterlingIcon,
   UsersIcon,
 } from 'lucide-react'
+import { BranchSwitcher } from '@/components/branch-switcher'
 import { ThemeToggle } from '@/components/theme'
 import { Wordmark } from '@/components/wordmark'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,15 @@ import { initials } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 export type NavCounts = { clockedIn: number; pendingLeave: number }
+
+/** What the shell shows about the business: its name, logo (if any) and branches. */
+export type ShellBusiness = {
+  name: string
+  logoUrl: string | null
+  branchWord: string
+  branches: { id: string; name: string }[]
+  selectedBranchId: string | null
+}
 
 const NAV = [
   { href: '/', label: 'Today', icon: LayoutDashboardIcon, badge: 'clockedIn' as const },
@@ -34,13 +44,24 @@ const NAV = [
   { href: '/devices', label: 'Terminals', icon: FingerprintIcon },
 ]
 
-function Brand({ storeName }: { storeName: string }) {
+function Brand({ business }: { business: ShellBusiness }) {
   return (
-    <Link href="/" className="block min-w-0 px-1.5 leading-tight" aria-label="Shiftly, today">
-      <Wordmark className="text-[1.35rem]" />
-      <span className="mt-0.5 block truncate text-xs text-muted-foreground">{storeName}</span>
+    <Link href="/" className="flex min-w-0 items-center gap-2.5 px-1.5 leading-tight" aria-label={`${business.name}, today`}>
+      {business.logoUrl && (
+        // The business's own logo, uploaded by the platform admin; small and already sized, so a plain img.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={business.logoUrl} alt="" className="size-9 shrink-0 rounded-md bg-white object-contain p-0.5" />
+      )}
+      <span className="min-w-0">
+        <Wordmark className="text-[1.35rem]" />
+        <span className="mt-0.5 block truncate text-xs text-muted-foreground">{business.name}</span>
+      </span>
     </Link>
   )
+}
+
+function BranchPicker({ business }: { business: ShellBusiness }) {
+  return <BranchSwitcher branches={business.branches} selectedId={business.selectedBranchId} branchWord={business.branchWord} />
 }
 
 function NavLinks({ counts, onNavigate, animated }: { counts: NavCounts; onNavigate?: () => void; animated?: boolean }) {
@@ -111,12 +132,12 @@ function UserFooter({ name }: { name: string }) {
 
 export function AppShell({
   userName,
-  storeName,
+  business,
   counts,
   children,
 }: {
   userName: string
-  storeName: string
+  business: ShellBusiness
   counts: NavCounts
   children: ReactNode
 }) {
@@ -125,7 +146,10 @@ export function AppShell({
   return (
     <div className="flex min-h-svh">
       <aside className="dark sidebar-ink sticky top-0 hidden h-svh w-64 shrink-0 flex-col gap-7 border-r bg-sidebar px-4 py-5 text-sidebar-foreground lg:flex">
-        <Brand storeName={storeName} />
+        <div className="grid gap-4">
+          <Brand business={business} />
+          <BranchPicker business={business} />
+        </div>
         <div className="flex-1">
           <NavLinks counts={counts} animated />
         </div>
@@ -137,7 +161,7 @@ export function AppShell({
           <Button variant="ghost" size="icon-sm" onClick={() => setOpen(true)} aria-label="Open menu">
             <MenuIcon />
           </Button>
-          <Brand storeName={storeName} />
+          <Brand business={business} />
           <div className="ml-auto">
             <ThemeToggle />
           </div>
@@ -145,7 +169,10 @@ export function AppShell({
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetContent side="left" className="dark sidebar-ink flex w-72 flex-col gap-7 bg-sidebar px-4 py-5 text-sidebar-foreground">
             <SheetTitle className="sr-only">Menu</SheetTitle>
-            <Brand storeName={storeName} />
+            <div className="grid gap-4">
+              <Brand business={business} />
+              <BranchPicker business={business} />
+            </div>
             <div className="flex-1">
               <NavLinks counts={counts} onNavigate={() => setOpen(false)} />
             </div>

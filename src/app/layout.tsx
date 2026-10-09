@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Hanken_Grotesk } from "next/font/google";
 import { ThemeProvider } from "@/components/theme";
+import { getBusiness } from "@/lib/business";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -21,10 +22,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: { default: "Shiftly", template: "%s · Shiftly" },
-  description: "Fingerprint clock in / clock out, shifts, holidays and wages for your store.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  // Tabs show the business the subdomain belongs to.
+  const name = (await getBusiness())?.name ?? "Shiftly";
+  return {
+    title: { default: name, template: `%s · ${name}` },
+    description: "Fingerprint clock in / clock out, shifts, holidays and wages.",
+  };
+}
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

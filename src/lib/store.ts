@@ -1,11 +1,3 @@
-/** Store-wide settings. Override with env vars when deploying for a real store. */
-export const STORE = {
-  name: process.env.NEXT_PUBLIC_STORE_NAME || 'My Store',
-  /** Opening hours (UK time), used to shade the day timeline. */
-  opens: process.env.NEXT_PUBLIC_STORE_OPENS || '08:00',
-  closes: process.env.NEXT_PUBLIC_STORE_CLOSES || '20:00',
-}
-
 /** Employee colours: ten muted hues of similar weight so no one person dominates a chart. */
 export const PALETTE = [
   '#4f6d8f', // slate blue

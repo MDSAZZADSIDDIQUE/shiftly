@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { PlusIcon } from 'lucide-react'
 import { ActionForm, Field, NativeSelect, SubmitButton } from '@/components/forms'
+import { BranchField, type BranchOption } from '@/components/branch-field'
 import { Input } from '@/components/ui/input'
 import { createShift } from '@/lib/actions/schedule'
 
-type Option = { id: string; name: string; onLeave: boolean; defaultMinutes: number | null }
+type Option = { id: string; name: string; onLeave: boolean; defaultMinutes: number | null; branchId: string | null }
 
 function addMinutes(time: string, minutes: number) {
   const [h, m] = time.split(':').map(Number)
@@ -14,10 +15,24 @@ function addMinutes(time: string, minutes: number) {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
-export function AddShiftForm({ date, employees }: { date: string; employees: Option[] }) {
+export function AddShiftForm({
+  date,
+  employees,
+  branches,
+  branchLabel,
+  selectedBranchId,
+}: {
+  date: string
+  employees: Option[]
+  branches: BranchOption[]
+  branchLabel: string
+  /** The branch the Rota is showing, if one is picked; otherwise the shift goes to the person's home branch. */
+  selectedBranchId: string | null
+}) {
   const [start, setStart] = useState('09:00')
   const [end, setEnd] = useState('17:00')
   const [employeeId, setEmployeeId] = useState('')
+  const [branchId, setBranchId] = useState(selectedBranchId ?? '')
   const selected = employees.find((e) => e.id === employeeId)
 
   return (
@@ -38,8 +53,9 @@ export function AddShiftForm({ date, employees }: { date: string; employees: Opt
               const id = event.target.value
               setEmployeeId(id)
               // Pre-fill the end time from the employee's usual hours.
-              const minutes = employees.find((e) => e.id === id)?.defaultMinutes
-              if (minutes) setEnd(addMinutes(start, minutes))
+              const person = employees.find((e) => e.id === id)
+              if (person?.defaultMinutes) setEnd(addMinutes(start, person.defaultMinutes))
+              if (!selectedBranchId) setBranchId(person?.branchId ?? '')
             }}
           >
             <option value="">Who?</option>
@@ -52,6 +68,7 @@ export function AddShiftForm({ date, employees }: { date: string; employees: Opt
           </NativeSelect>
         </Field>
         {selected?.onLeave && <p className="text-xs text-warning-text">{selected.name} has approved holiday on this day.</p>}
+        <BranchField branches={branches} label={branchLabel} value={branchId} onChange={setBranchId} />
         <div className="grid grid-cols-2 gap-3">
           <Field label="Start">
             <Input type="time" name="start" value={start} onChange={(e) => setStart(e.target.value)} required />

@@ -1,4 +1,4 @@
-import { clientIp, logRequest, serialFrom, text, touchDevice } from '@/lib/adms'
+import { logRequest, serialFrom, text, touchDevice } from '@/lib/adms'
 
 // The terminal polls here for commands. We have none to send, so this doubles as a heartbeat.
 export async function GET(request: Request) {
@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   if (!serial) return text('ERROR: missing SN', 400)
 
   try {
-    await touchDevice(serial, clientIp(request))
+    await touchDevice(request, serial)
   } catch (error) {
     console.error('[iclock] heartbeat failed', serial, error)
   }

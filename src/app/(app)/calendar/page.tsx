@@ -8,6 +8,7 @@ import { HoursBar } from '@/components/visuals'
 import { Button } from '@/components/ui/button'
 import { deleteShift, updateShift } from '@/lib/actions/schedule'
 import { TZ, formatDuration, formatMinutes, isDateString, londonTime, londonToday, prettyDate, shiftDate } from '@/lib/format'
+import { capitalise, getBranches, getSelectedBranch, requireBusiness } from '@/lib/business'
 import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 import type { CalendarDay, DailySummary, Employee, LeaveRequest, Shift } from '@/lib/types'
@@ -44,14 +45,22 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
   const to = format(gridEnd, 'yyyy-MM-dd')
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd }).map((d) => format(d, 'yyyy-MM-dd'))
 
+  const business = await requireBusiness()
+  const [branches, branch] = await Promise.all([getBranches(business.id), getSelectedBranch(business.id)])
+  const branchOptions = branches.map((b) => ({ id: b.id, name: b.name }))
+  const branchLabel = capitalise(business.branch_word)
+  const branchName = new Map(branches.map((b) => [b.id, b.name]))
+
   const supabase = await createClient()
+  let shiftsQuery = supabase.from('shifts').select('*').gte('shift_date', from).lte('shift_date', to).order('starts_at')
+  if (branch) shiftsQuery = shiftsQuery.eq('branch_id', branch.id)
   const [employeesRes, calRes, shiftsRes, leaveRes, workedRes, patternsRes] = await Promise.all([
     supabase.from('employees').select('*').order('full_name'),
     supabase.rpc('calendar_summary', { p_from: from, p_to: to }),
-    supabase.from('shifts').select('*').gte('shift_date', from).lte('shift_date', to).order('starts_at'),
+    shiftsQuery,
     supabase.from('leave_requests').select('*').eq('status', 'approved').lte('start_date', to).gte('end_date', from),
     supabase.from('daily_summary').select('*').gte('work_date', from).lte('work_date', to),
-    supabase.from('shift_patterns').select('employee_id'),
+    supabase.from('shift_patterns').select('employee_id, branch_id'),
   ])
 
   const employees = (employeesRes.data ?? []) as Employee[]
@@ -59,14 +68,32 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
   const cal = new Map(((calRes.data ?? []) as CalendarDay[]).map((d) => [d.day, d]))
   const shifts = (shiftsRes.data ?? []) as Shift[]
   const leave = (leaveRes.data ?? []) as LeaveRequest[]
-  const worked = ((workedRes.data ?? []) as DailySummary[]).filter((d) => d.worked_seconds > 0)
+  // At one branch, a past day shows the people based there or rota'd there that day.
+  const worked = ((workedRes.data ?? []) as DailySummary[]).filter(
+    (d) =>
+      d.worked_seconds > 0 &&
+      (!branch ||
+        byId.get(d.employee_id)?.branch_id === branch.id ||
+        shifts.some((x) => x.employee_id === d.employee_id && x.shift_date === d.work_date))
+  )
   // Bulk tools: who can be filled from a usual week, and the week of the selected day for copying.
-  const withPattern = new Set(((patternsRes.data ?? []) as { employee_id: string }[]).map((p) => p.employee_id))
+  const withPattern = new Set(
+    ((patternsRes.data ?? []) as { employee_id: string; branch_id: string | null }[])
+      .filter((p) => !branch || (p.branch_id ?? byId.get(p.employee_id)?.branch_id) === branch.id)
+      .map((p) => p.employee_id)
+  )
   const fillPeople = employees.filter((e) => e.active && withPattern.has(e.id)).map((e) => ({ id: e.id, name: e.full_name }))
   const selectedWeek = format(startOfWeek(parseISO(selected), { weekStartsOn: 1 }), 'yyyy-MM-dd')
   const selectedWeekShifts = shifts.filter((s) => s.shift_date >= selectedWeek && s.shift_date <= shiftDate(selectedWeek, 6)).length
 
   const hoursFor = (day: string) => {
+    if (branch) {
+      // The calendar summary covers the whole business, so add up the branch's own figures.
+      if (day <= today) return worked.filter((d) => d.work_date === day).reduce((sum, d) => sum + d.worked_seconds, 0) / 3600
+      return shifts
+        .filter((x) => x.shift_date === day)
+        .reduce((sum, x) => sum + (new Date(x.ends_at).getTime() - new Date(x.starts_at).getTime()) / 3600000, 0)
+    }
     const d = cal.get(day)
     if (!d) return 0
     return day <= today ? d.worked_seconds / 3600 : d.scheduled_minutes / 60
@@ -106,8 +133,8 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
         title="Rota"
         actions={
           <>
-            <FillRotaDialog from={today} to={shiftDate(today, 27)} people={fillPeople} />
-            <CopyWeekDialog week={selectedWeek} label={`week of ${prettyDate(selectedWeek, 'EEE d MMM')}`} shifts={selectedWeekShifts} />
+            <FillRotaDialog from={today} to={shiftDate(today, 27)} people={fillPeople} branch={branch} />
+            <CopyWeekDialog week={selectedWeek} label={`week of ${prettyDate(selectedWeek, 'EEE d MMM')}`} shifts={selectedWeekShifts} branch={branch} />
             <div className="surface flex items-center gap-1 rounded-xl p-1">
               <Button variant="ghost" size="icon-sm" nativeButton={false} render={<Link href={`/calendar?month=${prev}`} aria-label="Previous month" />}>
                 <ChevronLeftIcon />
@@ -243,12 +270,13 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
                         <p className="truncate text-sm font-medium">{e.full_name}</p>
                         <p className="text-xs text-muted-foreground tabular-nums">
                           {londonTime(s.starts_at)}–{londonTime(s.ends_at)} · {formatMinutes((new Date(s.ends_at).getTime() - new Date(s.starts_at).getTime()) / 60000)}
+                          {!branch && s.branch_id && branches.length > 1 && ` · ${branchName.get(s.branch_id)}`}
                           {s.note && ` · ${s.note}`}
                         </p>
                       </div>
                       <EditShiftDialog
                         // Remount after a save so the form starts from the updated shift.
-                        key={`${s.employee_id}-${s.starts_at}-${s.ends_at}-${s.note ?? ''}`}
+                        key={`${s.employee_id}-${s.branch_id}-${s.starts_at}-${s.ends_at}-${s.note ?? ''}`}
                         action={updateShift.bind(null, s.id)}
                         name={e.full_name}
                         employeeId={s.employee_id}
@@ -257,6 +285,9 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
                         end={londonTime(s.ends_at)}
                         note={s.note}
                         employees={staffOptions(s.employee_id)}
+                        branchId={s.branch_id}
+                        branches={branchOptions}
+                        branchLabel={branchLabel}
                       />
                       <ActionButton
                         variant="ghost"
@@ -281,7 +312,11 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
                 name: e.full_name,
                 onLeave: dayLeave.some((l) => l.employee_id === e.id),
                 defaultMinutes: e.daily_minutes,
+                branchId: e.branch_id,
               }))}
+              branches={branchOptions}
+              branchLabel={branchLabel}
+              selectedBranchId={branch?.id ?? null}
             />
           </Panel>
 

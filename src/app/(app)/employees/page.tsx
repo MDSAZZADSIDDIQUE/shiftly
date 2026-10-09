@@ -5,6 +5,7 @@ import { FingerprintIcon, UserPlusIcon } from 'lucide-react'
 import { EmptyState, PageHeader, PersonAvatar } from '@/components/people'
 import { createEmployee } from '@/lib/actions/employees'
 import { formatMinutes, formatPence, londonToday, shiftDate } from '@/lib/format'
+import { capitalise, getBranches, getSelectedBranch, requireBusiness } from '@/lib/business'
 import { createClient } from '@/lib/supabase/server'
 import type { DailySummary, Employee, PayRate } from '@/lib/types'
 import { AddEmployeeDialog } from './employee-form'
@@ -12,6 +13,13 @@ import { AddEmployeeDialog } from './employee-form'
 export const metadata: Metadata = { title: 'Staff' }
 
 export default async function EmployeesPage() {
+  const business = await requireBusiness()
+  const [branches, branch] = await Promise.all([getBranches(business.id), getSelectedBranch(business.id)])
+  const branchChoice = {
+    branches: branches.map((b) => ({ id: b.id, name: b.name })),
+    label: capitalise(business.branch_word),
+    defaultId: branch?.id ?? null,
+  }
   const today = londonToday()
   const monthStart = `${today.slice(0, 7)}-01`
   const supabase = await createClient()
@@ -21,7 +29,8 @@ export default async function EmployeesPage() {
     supabase.from('daily_summary').select('employee_id, paid_minutes, worked_seconds, is_clocked_in, work_date').gte('work_date', monthStart < shiftDate(today, -13) ? monthStart : shiftDate(today, -13)),
   ])
 
-  const employees = (employeesRes.data ?? []) as Employee[]
+  // At one branch: the people based there.
+  const employees = ((employeesRes.data ?? []) as Employee[]).filter((e) => !branch || e.branch_id === branch.id)
   const rates = (ratesRes.data ?? []) as PayRate[]
   const month = (monthRes.data ?? []) as Pick<DailySummary, 'employee_id' | 'paid_minutes' | 'worked_seconds' | 'is_clocked_in' | 'work_date'>[]
 
@@ -29,12 +38,12 @@ export default async function EmployeesPage() {
     <>
       <PageHeader
         title="Staff"
-        description={`${employees.filter((e) => e.active).length} on the books`}
-        actions={<AddEmployeeDialog action={createEmployee} />}
+        description={`${employees.filter((e) => e.active).length} on the books${branch ? ` at ${branch.name}` : ''}`}
+        actions={<AddEmployeeDialog action={createEmployee} branch={branchChoice} />}
       />
       {employees.length === 0 ? (
         <div className="surface rounded-2xl">
-          <EmptyState icon={<UserPlusIcon />} title="No staff yet" action={<AddEmployeeDialog action={createEmployee} />}>
+          <EmptyState icon={<UserPlusIcon />} title="No staff yet" action={<AddEmployeeDialog action={createEmployee} branch={branchChoice} />}>
             Add your first employee, then enrol their fingerprint on the terminal to start tracking hours.
           </EmptyState>
         </div>

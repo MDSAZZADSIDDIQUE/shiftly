@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { signIn } from '@/lib/actions/auth'
 
-export function LoginForm() {
+export function LoginForm({ notice }: { notice?: string }) {
   const [state, action, pending] = useActionState(signIn, {})
   return (
     <form action={action} className="grid gap-5">
@@ -19,7 +19,7 @@ export function LoginForm() {
         <Label htmlFor="password">Password</Label>
         <Input id="password" name="password" type="password" autoComplete="current-password" required />
       </div>
-      {state.error && <p className="text-sm text-destructive">{state.error}</p>}
+      {(state.error ?? notice) && <p className="text-sm text-destructive">{state.error ?? notice}</p>}
       <Button type="submit" size="lg" disabled={pending}>
         {pending && <Loader2Icon className="animate-spin" />}
         Sign in

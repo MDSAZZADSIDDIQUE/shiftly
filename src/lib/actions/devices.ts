@@ -8,7 +8,7 @@ export async function updateDevice(id: string, form: FormData): Promise<ActionRe
   const supabase = await createClient()
   const { error } = await supabase
     .from('devices')
-    .update({ name: optional(form, 'name'), enabled: form.get('enabled') === 'on' })
+    .update({ name: optional(form, 'name'), enabled: form.get('enabled') === 'on', branch_id: optional(form, 'branch_id') })
     .eq('id', id)
   return done(error)
 }
@@ -20,7 +20,10 @@ export async function addDevice(form: FormData): Promise<ActionResult> {
   const supabase = await createClient()
   const { error } = await supabase
     .from('devices')
-    .upsert({ serial_number: serial, name: optional(form, 'name'), enabled: true }, { onConflict: 'serial_number' })
+    .upsert(
+      { serial_number: serial, name: optional(form, 'name'), branch_id: optional(form, 'branch_id'), enabled: true },
+      { onConflict: 'serial_number' }
+    )
   return done(error)
 }
 

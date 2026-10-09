@@ -2,6 +2,7 @@
 
 import { PencilIcon, PlusIcon } from 'lucide-react'
 import { Field, FormDialog } from '@/components/forms'
+import { BranchField, type BranchOption } from '@/components/branch-field'
 import { Input } from '@/components/ui/input'
 import type { ActionResult, Employee } from '@/lib/types'
 import { PALETTE } from '@/lib/store'
@@ -13,7 +14,10 @@ function hoursInput(minutes: number | null | undefined) {
   return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`
 }
 
-function Fields({ employee, withRate }: { employee?: Employee; withRate?: boolean }) {
+/** The business's branches, what it calls them, and the branch to suggest for someone new. */
+export type BranchChoice = { branches: BranchOption[]; label: string; defaultId: string | null }
+
+function Fields({ employee, withRate, branch }: { employee?: Employee; withRate?: boolean; branch: BranchChoice }) {
   return (
     <>
       <Field label="Full name">
@@ -21,12 +25,17 @@ function Fields({ employee, withRate }: { employee?: Employee; withRate?: boolea
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Job title">
-          <Input name="job_title" defaultValue={employee?.job_title ?? ''} placeholder="Sales assistant" />
+          <Input name="job_title" defaultValue={employee?.job_title ?? ''} placeholder="e.g. Dispenser" />
         </Field>
         <Field label="Start date">
           <Input type="date" name="started_on" defaultValue={employee?.started_on ?? ''} />
         </Field>
       </div>
+      <BranchField
+        branches={branch.branches}
+        label={`Home ${branch.label.toLowerCase()}`}
+        defaultValue={employee ? employee.branch_id : branch.defaultId}
+      />
       <div className="grid grid-cols-2 gap-3">
         <Field label="Email">
           <Input type="email" name="email" defaultValue={employee?.email ?? ''} />
@@ -77,7 +86,7 @@ function Fields({ employee, withRate }: { employee?: Employee; withRate?: boolea
   )
 }
 
-export function AddEmployeeDialog({ action }: { action: (form: FormData) => Promise<ActionResult> }) {
+export function AddEmployeeDialog({ action, branch }: { action: (form: FormData) => Promise<ActionResult>; branch: BranchChoice }) {
   return (
     <FormDialog
       title="Add staff"
@@ -88,12 +97,20 @@ export function AddEmployeeDialog({ action }: { action: (form: FormData) => Prom
       successMessage="Added"
       wide
     >
-      <Fields withRate />
+      <Fields withRate branch={branch} />
     </FormDialog>
   )
 }
 
-export function EditEmployeeDialog({ employee, action }: { employee: Employee; action: (form: FormData) => Promise<ActionResult> }) {
+export function EditEmployeeDialog({
+  employee,
+  action,
+  branch,
+}: {
+  employee: Employee
+  action: (form: FormData) => Promise<ActionResult>
+  branch: BranchChoice
+}) {
   return (
     <FormDialog
       title={`Edit ${employee.full_name}`}
@@ -102,7 +119,7 @@ export function EditEmployeeDialog({ employee, action }: { employee: Employee; a
       successMessage="Saved"
       wide
     >
-      <Fields employee={employee} />
+      <Fields employee={employee} branch={branch} />
     </FormDialog>
   )
 }

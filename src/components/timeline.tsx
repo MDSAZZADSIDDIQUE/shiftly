@@ -3,7 +3,7 @@ import { TZDate } from '@date-fns/tz'
 import { PersonAvatar } from '@/components/people'
 import { cn } from '@/lib/utils'
 import { TZ, formatDuration, formatMinutes, londonTime } from '@/lib/format'
-import { STORE, toMinutes } from '@/lib/store'
+import { toMinutes } from '@/lib/store'
 import type { AttendanceSession, Employee, Shift } from '@/lib/types'
 
 /** Minutes after London midnight of `date` for an instant (can exceed 1440 for overnight). */
@@ -24,6 +24,8 @@ export function DayTimeline({
   shifts,
   nowIso,
   isToday,
+  openHours,
+  placeWord,
   size = 'md',
 }: {
   date: string
@@ -32,6 +34,10 @@ export function DayTimeline({
   shifts: Shift[]
   nowIso: string
   isToday: boolean
+  /** Opening hours that day (UK time), or null when closed all day. */
+  openHours: { opens: string; closes: string } | null
+  /** What the business calls its premises: "shop", "pharmacy"... */
+  placeWord: string
   /** `lg` for the dashboard's "today" strip: taller rows. */
   size?: 'md' | 'lg'
 }) {
@@ -44,8 +50,9 @@ export function DayTimeline({
     return <p className="py-8 text-center text-sm text-muted-foreground">Nobody on the rota or clocked in.</p>
   }
 
-  const opens = toMinutes(STORE.opens)
-  const closes = toMinutes(STORE.closes)
+  // Closed all day: the whole day is shaded.
+  const opens = openHours ? toMinutes(openHours.opens) : 12 * 60
+  const closes = openHours ? toMinutes(openHours.closes) : 12 * 60
   const points = [
     ...sessions.flatMap((s) => [minuteOfDay(s.clock_in, date), minuteOfDay(s.clock_out ?? nowIso, date)]),
     ...shifts.flatMap((s) => [minuteOfDay(s.starts_at, date), minuteOfDay(s.ends_at, date)]),
@@ -172,7 +179,7 @@ export function DayTimeline({
             <span className="h-2.5 w-4 rounded-sm bg-muted-foreground" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent 0 3px, rgb(255 255 255 / 0.35) 3px 6px)' }} /> Working now
           </span>
           <span className="flex items-center gap-1.5"><span className="h-3 w-4 rounded-sm border-2 border-dashed border-muted-foreground" /> Scheduled</span>
-          <span className="flex items-center gap-1.5"><span className="h-3 w-4 rounded-sm bg-muted" style={{ backgroundImage: HATCH }} /> Shop closed</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-4 rounded-sm bg-muted" style={{ backgroundImage: HATCH }} /> {placeWord.charAt(0).toUpperCase() + placeWord.slice(1)} closed</span>
           {showNow && <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 bg-primary" /> Now</span>}
         </div>
       </div>

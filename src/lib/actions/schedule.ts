@@ -24,7 +24,9 @@ function readShift(form: FormData) {
     next.setUTCDate(next.getUTCDate() + 1)
     endsAt = londonToIso(next.toISOString().slice(0, 10), end)
   }
-  return { row: { employee_id: employeeId, starts_at: startsAt, ends_at: endsAt, note: optional(form, 'note') } } as const
+  return {
+    row: { employee_id: employeeId, branch_id: optional(form, 'branch_id'), starts_at: startsAt, ends_at: endsAt, note: optional(form, 'note') },
+  } as const
 }
 
 export async function createShift(form: FormData): Promise<ActionResult> {

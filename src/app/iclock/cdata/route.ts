@@ -1,6 +1,5 @@
 import {
   IGNORED_TABLES,
-  clientIp,
   handshakeResponse,
   ingestAttLog,
   logRequest,
@@ -16,7 +15,7 @@ export async function GET(request: Request) {
   const serial = serialFrom(request)
   if (!serial) return text('ERROR: missing SN', 400)
 
-  const { configured } = await touchDevice(serial, clientIp(request))
+  const { configured } = await touchDevice(request, serial)
   if (!configured) return text('ERROR: server not configured', 503)
   return text(handshakeResponse(serial))
 }
@@ -29,24 +28,23 @@ export async function POST(request: Request) {
 
   const params = new URL(request.url).searchParams
   const table = params.get('table')?.toUpperCase()
-  const ip = clientIp(request)
 
   try {
     if (table === 'ATTLOG' || table === 'RTLOG') {
       const rows = table === 'ATTLOG' ? parseAttLog(body) : parseRtLog(body).rows
-      const { configured } = await ingestAttLog(serial, ip, rows)
+      const { configured } = await ingestAttLog(request, serial, rows)
       if (!configured) return text('ERROR: server not configured', 503)
       return text(`OK: ${rows.length}`)
     }
 
     if (table && IGNORED_TABLES.has(table)) {
-      await touchDevice(serial, ip)
+      await touchDevice(request, serial)
       return text('OK')
     }
 
     // Push 3.x enrolment uploads (users, templates, photos): the terminal expects "<tablename>=<count>".
     if (table === 'TABLEDATA') {
-      await touchDevice(serial, ip)
+      await touchDevice(request, serial)
       return text(`${params.get('tablename') ?? 'data'}=${params.get('count') ?? 0}`)
     }
 

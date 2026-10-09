@@ -95,6 +95,38 @@ begin
 end;
 $$;
 
+-- The auth server's admin API inserts the user first and sets app_metadata in a second update, so follow changes
+-- to those keys too. Only keys whose value changed are copied, so a role changed in Shiftly isn't reverted by an
+-- unrelated app_metadata update later.
+create or replace function public.sync_profile_from_app_metadata()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_new jsonb := coalesce(new.raw_app_meta_data, '{}');
+  v_old jsonb := coalesce(old.raw_app_meta_data, '{}');
+begin
+  if v_new -> 'business_id' is distinct from v_old -> 'business_id' and v_new ? 'business_id' then
+    update public.profiles set business_id = nullif(v_new ->> 'business_id', '')::uuid where id = new.id;
+  end if;
+  if v_new -> 'role' is distinct from v_old -> 'role' and v_new ? 'role' then
+    update public.profiles
+    set role = case when v_new ->> 'role' = 'manager' then 'manager' else 'employee' end::public.app_role
+    where id = new.id;
+  end if;
+  if v_new -> 'platform_admin' is distinct from v_old -> 'platform_admin' and v_new ? 'platform_admin' then
+    update public.profiles set is_platform_admin = coalesce((v_new ->> 'platform_admin')::boolean, false) where id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_app_metadata
+  after update of raw_app_meta_data on auth.users
+  for each row execute function public.sync_profile_from_app_metadata();
+
 -- ---------------------------------------------------------------------------
 -- business_id on every table
 -- ---------------------------------------------------------------------------
