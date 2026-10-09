@@ -287,13 +287,13 @@ export default async function DashboardPage() {
                 {(holiday.length > 0 || off.length > 0) && (
                   <section className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t pt-4">
                     {holiday.length > 0 && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <span className="text-xs font-medium text-muted-foreground">On holiday</span>
                         <AvatarStack people={holiday} />
                       </div>
                     )}
                     {off.length > 0 && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <span className="text-xs font-medium text-muted-foreground">Off today</span>
                         <AvatarStack people={off} muted />
                       </div>
@@ -390,10 +390,14 @@ function PersonRow({
   )
 }
 
-function AvatarStack({ people, muted }: { people: Employee[]; muted?: boolean }) {
+/** Overlapping avatars, capped so a big team doesn't run off the card; the rest are a "+N" chip. */
+function AvatarStack({ people, muted, max = 8 }: { people: Employee[]; muted?: boolean; max?: number }) {
+  // Showing max - 1 faces plus "+2" or more beats max faces plus "+1".
+  const shown = people.length > max ? people.slice(0, max - 1) : people
+  const rest = people.slice(shown.length)
   return (
     <span className="flex -space-x-2">
-      {people.map((e) => (
+      {shown.map((e) => (
         <Link
           key={e.id}
           href={`/employees/${e.id}`}
@@ -403,6 +407,16 @@ function AvatarStack({ people, muted }: { people: Employee[]; muted?: boolean })
           <PersonAvatar name={e.full_name} color={e.color} size="sm" muted={muted} />
         </Link>
       ))}
+      {rest.length > 0 && (
+        <Link
+          href="/employees"
+          title={rest.map((e) => e.full_name).join(', ')}
+          aria-label={`${rest.length} more: ${rest.map((e) => e.full_name).join(', ')}`}
+          className="relative flex size-7 items-center justify-center rounded-full bg-muted text-[0.65rem] font-semibold text-muted-foreground ring-2 ring-card transition-transform tabular-nums hover:z-10 hover:-translate-y-0.5"
+        >
+          +{rest.length}
+        </Link>
+      )}
     </span>
   )
 }
