@@ -1,8 +1,10 @@
--- Demo data for showing Shiftly to clients: a UK store team of eleven (plus one leaver) with eight weeks of
--- fingerprint scans, a rota for the fortnight ahead, pay rates, holidays and sign-in accounts.
+-- Demo data for showing Shiftly to Parkway Pharmacy: a community pharmacy team of eleven (plus one leaver) with
+-- eight weeks of fingerprint scans, a rota for the fortnight ahead, pay rates, holidays and sign-in accounts.
+-- The pharmacy opens 09:00–18:30 Monday to Friday and 09:00–17:30 on Saturday, and a pharmacist is rota'd for
+-- every opening hour (Amira Monday to Thursday, Grace Friday and Saturday).
 --
 -- Everything is relative to the moment the seed runs, so reseed shortly before a demo (`npx supabase db reset`)
--- and run it during shop hours: some staff will be clocked in, some finished, one late and one on holiday.
+-- and run it during opening hours: some staff will be clocked in, some finished, one late and one on holiday.
 -- Safe to run once on an empty database (SQL editor or `supabase db reset`).
 --
 -- Demo sign-ins (all share the password below; see README → Demo data):
@@ -57,73 +59,76 @@ update public.profiles set role = 'manager' where id = '00000000-0000-0000-0000-
 update public.profiles set role = 'employee' where id <> '00000000-0000-0000-0000-00000000a001';
 
 -- ---------------------------------------------------------------------------
--- Team and pay. Rates follow the UK National Living Wage (£12.21 → £12.71 on 1 April 2026; 18–20: £10.00 → £10.85).
+-- Team and pay. Assistants follow the UK National Living Wage (£12.21 → £12.71 on 1 April 2026; 18–20: £10.00 → £10.85);
+-- pharmacists, the trainee and the technician are paid above it.
 -- ---------------------------------------------------------------------------
 
 insert into public.employees (id, user_id, full_name, job_title, device_user_id, daily_minutes, color, email, phone, active, started_on) values
-  ('11111111-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000a002', 'Amira Khan',       'Store supervisor',  '1',  480, '#4f6d8f', 'amira@example.co.uk',  '07700 900101', true,  '2024-03-01'),
-  ('11111111-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000a003', 'Tom Reed',         'Sales assistant',   '2',  300, '#5f8a6e', 'tom@example.co.uk',    '07700 900102', true,  '2025-01-15'),
-  ('11111111-0000-0000-0000-000000000003', '00000000-0000-0000-0000-00000000a004', 'Priya Patel',      'Sales assistant',   '3',  240, '#b8873a', 'priya@example.co.uk',  '07700 900103', true,  '2025-09-20'),
-  ('11111111-0000-0000-0000-000000000004', null,                                   'Jack Wilson',      'Stock assistant',   '4',  360, '#b5583f', 'jack@example.co.uk',   '07700 900104', true,  '2025-06-02'),
-  ('11111111-0000-0000-0000-000000000005', '00000000-0000-0000-0000-00000000a005', 'Chloe Davies',     'Sales assistant',   '5',  300, '#3f8a8c', 'chloe@example.co.uk',  '07700 900105', true,  '2026-02-10'),
-  ('11111111-0000-0000-0000-000000000006', null,                                   'Mohammed Hussain', 'Weekend assistant', '6',  240, '#7a5c8e', null,                   null,           true,  '2026-05-01'),
-  ('11111111-0000-0000-0000-000000000007', null,                                   'Grace O''Connor',  'Assistant manager', '7',  450, '#a8606f', 'grace@example.co.uk',  '07700 900107', true,  '2023-08-14'),
-  ('11111111-0000-0000-0000-000000000008', null,                                   'Daniel Okafor',    'Stock assistant',   '8',  360, '#6b7a3c', 'daniel@example.co.uk', '07700 900108', true,  '2025-11-03'),
-  ('11111111-0000-0000-0000-000000000009', null,                                   'Ellie Thompson',   'Sales assistant',   '9',  240, '#8a6a4f', 'ellie@example.co.uk',  '07700 900109', true,  '2026-01-05'),
-  ('11111111-0000-0000-0000-000000000010', null,                                   'Ryan Clarke',      'Weekend assistant', '10', 300, '#c07a3e', 'ryan@example.co.uk',   null,           true,  '2026-06-20'),
-  ('11111111-0000-0000-0000-000000000011', null,                                   'Sophie Bennett',   'Cashier',           '11', 360, '#4f6d8f', 'sophie@example.co.uk', '07700 900111', true,  '2024-10-07'),
-  ('11111111-0000-0000-0000-000000000012', null,                                   'Liam Harris',      'Sales assistant',   '12', 240, '#5f8a6e', 'liam@example.co.uk',   null,           false, '2025-04-12');
+  ('11111111-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000a002', 'Amira Khan',       'Pharmacist',                   '1',  570, '#4f6d8f', 'amira@example.co.uk',  '07700 900101', true,  '2024-03-01'),
+  ('11111111-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000a003', 'Tom Reed',         'Dispenser',                    '2',  480, '#5f8a6e', 'tom@example.co.uk',    '07700 900102', true,  '2025-01-15'),
+  ('11111111-0000-0000-0000-000000000003', '00000000-0000-0000-0000-00000000a004', 'Priya Patel',      'Trainee pharmacist',           '3',  480, '#b8873a', 'priya@example.co.uk',  '07700 900103', true,  '2025-09-20'),
+  ('11111111-0000-0000-0000-000000000004', null,                                   'Jack Wilson',      'Delivery driver',              '4',  360, '#b5583f', 'jack@example.co.uk',   '07700 900104', true,  '2025-06-02'),
+  ('11111111-0000-0000-0000-000000000005', '00000000-0000-0000-0000-00000000a005', 'Chloe Davies',     'Medicines counter assistant',  '5',  300, '#3f8a8c', 'chloe@example.co.uk',  '07700 900105', true,  '2026-02-10'),
+  ('11111111-0000-0000-0000-000000000006', null,                                   'Mohammed Hussain', 'Saturday counter assistant',   '6',  240, '#7a5c8e', null,                   null,           true,  '2026-05-01'),
+  ('11111111-0000-0000-0000-000000000007', null,                                   'Grace O''Connor',  'Pharmacist',                   '7',  570, '#a8606f', 'grace@example.co.uk',  '07700 900107', true,  '2023-08-14'),
+  ('11111111-0000-0000-0000-000000000008', null,                                   'Daniel Okafor',    'Pharmacy technician',          '8',  480, '#6b7a3c', 'daniel@example.co.uk', '07700 900108', true,  '2025-11-03'),
+  ('11111111-0000-0000-0000-000000000009', null,                                   'Ellie Thompson',   'Dispensing assistant',         '9',  240, '#8a6a4f', 'ellie@example.co.uk',  '07700 900109', true,  '2026-01-05'),
+  ('11111111-0000-0000-0000-000000000010', null,                                   'Ryan Clarke',      'Counter assistant',            '10', 240, '#c07a3e', 'ryan@example.co.uk',   null,           true,  '2026-06-20'),
+  ('11111111-0000-0000-0000-000000000011', null,                                   'Sophie Bennett',   'Healthcare counter assistant', '11', 360, '#4f6d8f', 'sophie@example.co.uk', '07700 900111', true,  '2024-10-07'),
+  ('11111111-0000-0000-0000-000000000012', null,                                   'Liam Harris',      'Delivery driver',              '12', 240, '#5f8a6e', 'liam@example.co.uk',   null,           false, '2025-04-12');
 
 insert into public.pay_rates (employee_id, hourly_rate_pence, effective_from) values
-  ('11111111-0000-0000-0000-000000000001', 1350, '2024-03-01'),
-  ('11111111-0000-0000-0000-000000000001', 1425, '2026-04-01'),
-  ('11111111-0000-0000-0000-000000000002', 1221, '2025-04-01'),
-  ('11111111-0000-0000-0000-000000000002', 1271, '2026-04-01'),
-  ('11111111-0000-0000-0000-000000000003', 1221, '2025-09-20'),
-  ('11111111-0000-0000-0000-000000000003', 1271, '2026-04-01'),
+  ('11111111-0000-0000-0000-000000000010', 1085, '2026-06-20'),
+  ('11111111-0000-0000-0000-000000000011', 1300, '2024-10-07'),
+  ('11111111-0000-0000-0000-000000000011', 1325, '2026-04-01'),
+  ('11111111-0000-0000-0000-000000000012', 1221, '2025-04-12'),
+  ('11111111-0000-0000-0000-000000000012', 1271, '2026-04-01'),
+  ('11111111-0000-0000-0000-000000000001', 2600, '2024-03-01'),
+  ('11111111-0000-0000-0000-000000000001', 2700, '2026-04-01'),
+  ('11111111-0000-0000-0000-000000000002', 1300, '2025-04-01'),
+  ('11111111-0000-0000-0000-000000000002', 1350, '2026-04-01'),
+  ('11111111-0000-0000-0000-000000000003', 1450, '2025-09-20'),
+  ('11111111-0000-0000-0000-000000000003', 1500, '2026-04-01'),
   ('11111111-0000-0000-0000-000000000004', 1221, '2025-06-02'),
   ('11111111-0000-0000-0000-000000000004', 1271, '2026-04-01'),
   ('11111111-0000-0000-0000-000000000005', 1221, '2026-02-10'),
   ('11111111-0000-0000-0000-000000000005', 1271, '2026-04-01'),
   ('11111111-0000-0000-0000-000000000006', 1085, '2026-05-01'),
-  ('11111111-0000-0000-0000-000000000007', 1475, '2023-08-14'),
-  ('11111111-0000-0000-0000-000000000007', 1550, '2026-04-01'),
-  ('11111111-0000-0000-0000-000000000008', 1221, '2025-11-03'),
-  ('11111111-0000-0000-0000-000000000008', 1271, '2026-04-01'),
-  ('11111111-0000-0000-0000-000000000009', 1221, '2026-01-05'),
-  ('11111111-0000-0000-0000-000000000009', 1271, '2026-04-01'),
-  ('11111111-0000-0000-0000-000000000010', 1085, '2026-06-20'),
-  ('11111111-0000-0000-0000-000000000011', 1300, '2024-10-07'),
-  ('11111111-0000-0000-0000-000000000011', 1325, '2026-04-01'),
-  ('11111111-0000-0000-0000-000000000012', 1221, '2025-04-12'),
-  ('11111111-0000-0000-0000-000000000012', 1271, '2026-04-01');
+  ('11111111-0000-0000-0000-000000000007', 2650, '2023-08-14'),
+  ('11111111-0000-0000-0000-000000000007', 2750, '2026-04-01'),
+  ('11111111-0000-0000-0000-000000000008', 1450, '2025-11-03'),
+  ('11111111-0000-0000-0000-000000000008', 1525, '2026-04-01'),
+  ('11111111-0000-0000-0000-000000000009', 1250, '2026-01-05'),
+  ('11111111-0000-0000-0000-000000000009', 1300, '2026-04-01');
 
 -- ---------------------------------------------------------------------------
--- Fingerprint terminals: the shop's own (enabled) and one that contacted the server but hasn't been approved.
+-- Fingerprint terminals: the pharmacy's own (enabled) and one that contacted the server but hasn't been approved.
 -- ---------------------------------------------------------------------------
 
 insert into public.devices (id, serial_number, name, enabled, last_seen_at, last_ip, created_at) values
-  ('22222222-0000-0000-0000-000000000001', 'CQZ7232460123', 'Shop floor terminal', true,  now() - interval '25 seconds', '81.2.69.142',   now() - interval '70 days'),
+  ('22222222-0000-0000-0000-000000000001', 'CQZ7232460123', 'Dispensary terminal', true,  now() - interval '25 seconds', '81.2.69.142',   now() - interval '70 days'),
   ('22222222-0000-0000-0000-000000000002', 'BOCK194960012', null,                  false, now() - interval '3 days',     '86.140.12.77', now() - interval '3 days');
 
 -- ---------------------------------------------------------------------------
--- Usual weeks. weekday is ISO (1 = Monday). Liam left five weeks ago, so he has history but no pattern.
+-- Usual weeks. weekday is ISO (1 = Monday); closed on Sundays. Grace has two rows because Saturday is shorter.
+-- Liam left five weeks ago, so he has history but no pattern.
 -- ---------------------------------------------------------------------------
 
 create temp table seed_pattern (employee_id uuid, days int[], start_time time, minutes int, until_day int);
 insert into seed_pattern values
-  ('11111111-0000-0000-0000-000000000001', array[1,2,3,4,5], '08:00', 480, null),
-  ('11111111-0000-0000-0000-000000000002', array[1,3,5,6],   '09:00', 300, null),
-  ('11111111-0000-0000-0000-000000000003', array[2,4,6],     '12:00', 240, null),
-  ('11111111-0000-0000-0000-000000000004', array[1,2,4,5],   '07:00', 360, null),
+  ('11111111-0000-0000-0000-000000000001', array[1,2,3,4],   '09:00', 570, null),  -- pharmacist, Mon–Thu
+  ('11111111-0000-0000-0000-000000000002', array[1,3,5,6],   '09:00', 480, null),
+  ('11111111-0000-0000-0000-000000000003', array[2,3,4,5,6], '09:00', 480, null),
+  ('11111111-0000-0000-0000-000000000004', array[1,2,4,5],   '10:00', 360, null),  -- prescription deliveries
   ('11111111-0000-0000-0000-000000000005', array[2,3,5,6],   '13:00', 300, null),
-  ('11111111-0000-0000-0000-000000000006', array[6,7],       '10:00', 240, null),
-  ('11111111-0000-0000-0000-000000000007', array[3,4,5,6,7], '11:30', 450, null),
-  ('11111111-0000-0000-0000-000000000008', array[1,3,4,6],   '07:00', 360, null),
-  ('11111111-0000-0000-0000-000000000009', array[1,4,5,7],   '15:00', 240, null),
-  ('11111111-0000-0000-0000-000000000010', array[5,6,7],     '14:00', 300, null),
+  ('11111111-0000-0000-0000-000000000006', array[6],         '10:00', 240, null),
+  ('11111111-0000-0000-0000-000000000007', array[5],         '09:00', 570, null),  -- pharmacist, Fri
+  ('11111111-0000-0000-0000-000000000007', array[6],         '09:00', 510, null),  -- pharmacist, Sat (closes 17:30)
+  ('11111111-0000-0000-0000-000000000008', array[1,3,4,6],   '08:30', 480, null),
+  ('11111111-0000-0000-0000-000000000009', array[1,4,5],     '14:30', 240, null),
+  ('11111111-0000-0000-0000-000000000010', array[5,6],       '13:30', 240, null),
   ('11111111-0000-0000-0000-000000000011', array[1,2,3],     '10:00', 360, null),
-  ('11111111-0000-0000-0000-000000000012', array[2,4,6],     '16:00', 240, -35);
+  ('11111111-0000-0000-0000-000000000012', array[2,4,6],     '12:00', 240, -35);
 
 insert into public.shift_patterns (employee_id, weekday, start_time, end_time)
 select p.employee_id, wd, p.start_time, p.start_time + make_interval(mins => p.minutes)
@@ -145,13 +150,13 @@ select employee_id, t.today + s, t.today + e, kind::public.leave_type, status::p
 from seed_today t, (values
   ('11111111-0000-0000-0000-000000000011'::uuid, -1, 2,  'annual', 'approved',  'A few days in Cornwall',        21),
   ('11111111-0000-0000-0000-000000000003'::uuid, 10, 14, 'annual', 'approved',  'Family visit',                  18),
-  ('11111111-0000-0000-0000-000000000001'::uuid, -26, -22, 'annual', 'approved', 'Half term with the kids',      45),
+  ('11111111-0000-0000-0000-000000000004'::uuid, -26, -22, 'annual', 'approved', 'Half term with the kids',      45),
   ('11111111-0000-0000-0000-000000000002'::uuid, -12, -11, 'sick',   'approved', 'Flu',                          12),
   ('11111111-0000-0000-0000-000000000008'::uuid, -40, -40, 'other',  'approved', 'Jury service',                 50),
   ('11111111-0000-0000-0000-000000000004'::uuid, 3, 3,   'annual', 'pending',   'Dentist',                        2),
   ('11111111-0000-0000-0000-000000000005'::uuid, 20, 24, 'annual', 'pending',   'Friend''s wedding in Edinburgh', 1),
   ('11111111-0000-0000-0000-000000000010'::uuid, 30, 31, 'unpaid', 'pending',   'University open days',           0),
-  ('11111111-0000-0000-0000-000000000007'::uuid, 5, 6,   'annual', 'declined',  'Weekend away',                   6),
+  ('11111111-0000-0000-0000-000000000007'::uuid, 5, 6,   'annual', 'declined',  'Weekend away; no locum free',    6),
   ('11111111-0000-0000-0000-000000000008'::uuid, 8, 9,   'annual', 'cancelled', null,                             9)
 ) as l(employee_id, s, e, kind, status, note, ask);
 
@@ -279,8 +284,8 @@ insert into public.day_approvals (employee_id, work_date, approved_minutes, note
 select employee_id, work_date, minutes, note, '00000000-0000-0000-0000-00000000a001'
 from (
   select '11111111-0000-0000-0000-000000000002'::uuid as employee_id, 240 as minutes, 'Left early, agreed 4h' as note, 2 as back
-  union all select '11111111-0000-0000-0000-000000000001', 540, 'Stayed late for the stock delivery', 4
-  union all select '11111111-0000-0000-0000-000000000008', 420, 'Extra hour for the stocktake', 9
+  union all select '11111111-0000-0000-0000-000000000001', 600, 'Stayed late for the wholesaler delivery', 4
+  union all select '11111111-0000-0000-0000-000000000008', 540, 'Extra hour for the controlled drugs check', 9
 ) o
 cross join lateral (
   select max(work_date) as work_date from public.attendance_sessions a, seed_today t

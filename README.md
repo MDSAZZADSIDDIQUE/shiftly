@@ -54,9 +54,9 @@ curl -X POST "http://localhost:3000/iclock/cdata?SN=TEST001&table=ATTLOG" \
 
 ### Demo data
 
-`supabase/seed.sql` sets up a store team for client demos: eleven staff plus one leaver, eight weeks of fingerprint scans, a rota for the next fortnight, pay rates with this year's National Living Wage rise, holidays (approved, pending, declined, cancelled), manager overrides, two terminals and a few things to point at: a missed clock out, a session the manager fixed, a manual clock in, a duplicate scan and an unrecognised finger.
+`supabase/seed.sql` sets up Parkway Pharmacy for client demos: a community pharmacy team of eleven plus one leaver (pharmacists, a trainee, a technician, dispensers, counter assistants and delivery drivers), with a pharmacist rota'd for every opening hour, eight weeks of fingerprint scans, a rota for the next fortnight, pay rates with this year's National Living Wage rise, holidays (approved, pending, declined, cancelled), manager overrides, two terminals and a few things to point at: a missed clock out, a session the manager fixed, a manual clock in, a duplicate scan and an unrecognised finger.
 
-All dates are relative to when the seed runs, so **reseed shortly before each demo, during shop hours (08:30–17:30 UK)**. That way the dashboard shows people mid-shift, one person late and one on holiday:
+All dates are relative to when the seed runs, so **reseed shortly before each demo, during opening hours (08:30–17:30 UK)**. That way the dashboard shows people mid-shift, one person late and one on holiday:
 
 ```bash
 npx supabase db reset

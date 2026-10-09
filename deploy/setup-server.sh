@@ -32,7 +32,7 @@ if [ ! -f "$ENV_FILE" ]; then
   umask 077
   cat > "$ENV_FILE" <<EOF
 DOMAIN=$DOMAIN
-NEXT_PUBLIC_STORE_NAME="${STORE_NAME:-Harbour Street Market}"
+NEXT_PUBLIC_STORE_NAME="${STORE_NAME:-Parkway Pharmacy}"
 POSTGRES_PASSWORD=$(openssl rand -hex 24)
 JWT_SECRET=$jwt_secret
 ANON_KEY=$(jwt anon)
