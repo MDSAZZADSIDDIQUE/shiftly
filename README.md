@@ -1,6 +1,14 @@
 # Shiftly
 
-Fingerprint clock in / clock out for a UK store. A cloud-connected (Wi-Fi / 4G) fingerprint terminal sends every scan to this app; the manager sees who's in, how long everyone worked, sets paid hours, assigns shifts, books holidays and gets wages for any period.
+Fingerprint clock in / clock out for UK businesses with one or more branches. A cloud-connected (Wi-Fi / 4G) fingerprint terminal sends every scan to this app; the manager sees who's in, how long everyone worked, sets paid hours, assigns shifts, books holidays and gets wages for any period.
+
+## Businesses and branches
+
+One Shiftly serves many businesses. Each business has its own address, `<slug>.<ROOT_DOMAIN>` (e.g. `parkway.shiftly.softilo.co.uk`), with its own name, logo, wording ("pharmacy", "branch") and branches with opening hours. Accounts belong to one business and only sign in on its address. Every row in the database carries a `business_id` and row level security keeps businesses apart (`supabase/tests/business_isolation.test.sql`, run with `npx supabase test db`).
+
+- **Branches**: managers switch between branches (or all of them) in the sidebar. Staff have a home branch but can be rota'd anywhere; shifts, usual weeks and terminals have a branch, and a clock in records the branch of the terminal used. Fingerprint IDs are unique per business, so one person keeps their ID at every branch.
+- **Platform admin**: the bare domain (`ROOT_DOMAIN`) is the admin area. It creates businesses, sets their name, logo, wording and branch opening hours, adds their managers (with a one-off password to pass on) and assigns terminals that called the bare domain. Create the first admin with `deploy/create-admin.sh`.
+- **Terminals** are recorded under the business whose address they call, so point each terminal at the business's own address (the Terminals page shows it).
 
 This repo is the **manager web app**. The employee mobile app comes later and will use the same Supabase backend (row level security already lets employees read only their own data and request holidays).
 
@@ -54,7 +62,7 @@ curl -X POST "http://localhost:3000/iclock/cdata?SN=TEST001&table=ATTLOG" \
 
 ### Demo data
 
-`supabase/seed.sql` sets up Parkway Pharmacy for client demos: a community pharmacy team of eleven plus one leaver (pharmacists, a trainee, a technician, dispensers, counter assistants and delivery drivers), with a pharmacist rota'd for every opening hour, eight weeks of fingerprint scans, a rota for the next fortnight, pay rates with this year's National Living Wage rise, holidays (approved, pending, declined, cancelled), manager overrides, two terminals and a few things to point at: a missed clock out, a session the manager fixed, a manual clock in, a duplicate scan and an unrecognised finger.
+`supabase/seed.sql` sets up Parkway Pharmacy (`parkway`) with four branches for client demos. Its team works at Dagenham East (the other three branch names are placeholders): a community pharmacy team of eleven plus one leaver (pharmacists, a trainee, a technician, dispensers, counter assistants and delivery drivers), with a pharmacist rota'd for every opening hour, eight weeks of fingerprint scans, a rota for the next fortnight, pay rates with this year's National Living Wage rise, holidays (approved, pending, declined, cancelled), manager overrides, two terminals and a few things to point at: a missed clock out, a session the manager fixed, a manual clock in, a duplicate scan and an unrecognised finger.
 
 All dates are relative to when the seed runs, so **reseed shortly before each demo, during opening hours (08:30–17:30 UK)**. That way the dashboard shows people mid-shift, one person late and one on holiday:
 
@@ -62,14 +70,18 @@ All dates are relative to when the seed runs, so **reseed shortly before each de
 npx supabase db reset
 ```
 
-To run against the local database (Docker), start Supabase with `npx supabase start`, put its URL and keys (`npx supabase status`) in `.env.supabase-local`, and use the `shiftly-local` launch config (port 3001). `NEXT_PUBLIC_STORE_NAME` in that file sets the store name.
+To run against the local database (Docker), start Supabase with `npx supabase start`, put its URL and keys (`npx supabase status`) in `.env.supabase-local`, and use the `shiftly-local` launch config (port 3001). Open Parkway at **http://parkway.localhost:3001** (browsers send `*.localhost` to your machine) and the admin area at http://localhost:3001. Create a local admin with:
 
-Sign-in accounts (all use the password `shiftly-demo-2026`):
+```bash
+SUPABASE_URL=http://127.0.0.1:55321 SERVICE_KEY=<secret key> bash deploy/create-admin.sh you@example.com
+```
+
+Sign-in accounts, on Parkway's address (all use the password `shiftly-demo-2026`):
 
 | Email | Role | Opens |
 | --- | --- | --- |
 | `sarah.mitchell@example.co.uk` | Manager | Dashboard, rota, wages, devices |
-| `amira@example.co.uk` | Employee (store supervisor) | Employee app `/me` |
+| `amira@example.co.uk` | Employee (pharmacist) | Employee app `/me` |
 | `tom@example.co.uk` | Employee | `/me` |
 | `priya@example.co.uk` | Employee | `/me` |
 | `chloe@example.co.uk` | Employee | `/me` |
@@ -78,17 +90,17 @@ The password is public. If you seed a database that anyone else can reach, chang
 
 ## Deploy on Oracle Cloud (Always Free)
 
-The demo runs at **https://shiftly.softilo.co.uk** on the shared Oracle VM (Ampere ARM64, Ubuntu 24.04) that also hosts the Softilo sites. Everything Shiftly needs runs in one Docker Compose project, `shiftly`:
+The demo runs on the shared Oracle VM: the admin area at **https://shiftly.softilo.co.uk** and Parkway at **https://parkway.shiftly.softilo.co.uk**. The VM (Ampere ARM64, Ubuntu 24.04) also hosts the Softilo sites. Everything Shiftly needs runs in one Docker Compose project, `shiftly`:
 
 - **Self-hosted Supabase**: Postgres, Auth, PostgREST and Realtime, the same versions the Supabase CLI uses locally. The database is not reachable from outside the VM.
 - **The app** (Next.js standalone build).
 - **A small Caddy gateway** on `127.0.0.1:3600`. It routes `/auth/v1`, `/rest/v1` and `/realtime/v1` to Supabase and everything else to the app, so the app and its Supabase API share one domain.
 
-The VM's own Caddy terminates HTTPS for the domain and proxies to the gateway (`/etc/caddy/sites/shiftly.caddy`). It also answers `/iclock/*` on plain HTTP port 80 for fingerprint terminals, so no extra firewall ports are needed. Secrets are generated on the server in `/etc/shiftly/shiftly.env` and never leave it; the code and compose files live in `/opt/shiftly`.
+The VM's own Caddy terminates HTTPS for the domain and every business subdomain and proxies to the gateway (`/etc/caddy/sites/shiftly.caddy`). Subdomain certificates are issued on demand, and only after Shiftly confirms the business exists (`/tls-check`, configured in `/etc/caddy/sites/00-on-demand-tls.caddy`). It also answers `/iclock/*` on plain HTTP port 80 for fingerprint terminals, so no extra firewall ports are needed. Secrets are generated on the server in `/etc/shiftly/shiftly.env` and never leave it; the code and compose files live in `/opt/shiftly`.
 
 **First time** (the VM already has Docker and Caddy):
 
-1. Point the domain at the VM: in Porkbun, add an **A** record for `shiftly` → the VM's public IP.
+1. Point the domain at the VM: in Porkbun, add **A** records for `shiftly` and `*.shiftly` → the VM's public IP.
 2. Generate secrets on the server:
    ```bash
    ssh ubuntu@<vm> "sudo DOMAIN=shiftly.softilo.co.uk bash -s" < deploy/setup-server.sh
@@ -102,6 +114,11 @@ The VM's own Caddy terminates HTTPS for the domain and proxies to the gateway (`
    ssh ubuntu@<vm> "sudo DOMAIN=shiftly.softilo.co.uk WITH_CADDY=1 bash -s" < deploy/setup-server.sh
    ```
 
+5. Create your platform admin account (prints a one-off password):
+   ```bash
+   ssh ubuntu@<vm> "sudo bash /opt/shiftly/src/deploy/create-admin.sh you@example.com 'Your Name'"
+   ```
+
 **Updating**: run step 3 again without `SEED=1`. It uploads the working tree, rebuilds the app, applies any new files in `supabase/migrations/` (tracked in `supabase_migrations.schema_migrations`, as the Supabase CLI does) and restarts what changed.
 
 **Fresh demo data before a client demo**: `RESEED=1` wipes all data and accounts on the server and loads `supabase/seed.sql` again:
@@ -110,11 +127,11 @@ The VM's own Caddy terminates HTTPS for the domain and proxies to the gateway (`
 SERVER=ubuntu@<vm> SSH_KEY=~/.ssh/<key> RESEED=1 bash deploy/deploy.sh
 ```
 
-**On the server**, `cd /opt/shiftly` and use `sudo docker compose ...` (`ps`, `logs app`, `exec db psql -U postgres`). The demo accounts and their public password are in [Demo data](#demo-data). Without SMTP, sign-up is disabled and accounts are confirmed on creation; add staff logins as the manager or in SQL.
+**On the server**, `cd /opt/shiftly` and use `sudo docker compose ...` (`ps`, `logs app`, `exec db psql -U postgres`). The demo accounts and their public password are in [Demo data](#demo-data). Without SMTP, sign-up is disabled and accounts are confirmed on creation; managers are added in the admin area, staff logins in SQL.
 
 ## Fingerprint terminal
 
-Any ZKTeco model with **ADMS / Cloud Server** support (Wi-Fi or 4G versions) works. Fingerprint templates stay on the terminal; only "user 12 scanned at 09:01:33" reaches the server. Unknown terminals are recorded but ignored until the manager ticks **Accept scans**.
+Any ZKTeco model with **ADMS / Cloud Server** support (Wi-Fi or 4G versions) works. Fingerprint templates stay on the terminal; only "user 12 scanned at 09:01:33" reaches the server. Unknown terminals are recorded under the business whose address they called, but ignored until its manager ticks **Accept scans** and picks the branch. A terminal that called the bare domain waits in the admin area.
 
 Access-control terminals such as the F22 use push protocol 3.x (`/iclock/registry`, `/iclock/push`, `/iclock/ping`) and upload door events as `table=rtlog`. Only successful identifications become punches; door state, alarms and denied scans are skipped. Every terminal request is logged as an `[iclock]` line (`docker compose logs app | grep iclock` on the server), and uploads in a table Shiftly doesn't know are refused so the terminal keeps them.
 

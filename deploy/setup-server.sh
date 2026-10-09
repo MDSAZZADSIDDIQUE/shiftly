@@ -4,7 +4,8 @@
 #
 # Usage (on the VM):
 #   sudo DOMAIN=shiftly.softilo.co.uk bash setup-server.sh
-# Add WITH_CADDY=1 once DNS points at this server, to serve DOMAIN over HTTPS through the host's Caddy.
+# Add WITH_CADDY=1 once DNS points at this server (DOMAIN and *.DOMAIN), to serve the platform admin on DOMAIN
+# and each business on its own subdomain over HTTPS through the host's Caddy.
 set -euo pipefail
 
 : "${DOMAIN:?Set DOMAIN, e.g. DOMAIN=shiftly.softilo.co.uk}"
@@ -32,7 +33,6 @@ if [ ! -f "$ENV_FILE" ]; then
   umask 077
   cat > "$ENV_FILE" <<EOF
 DOMAIN=$DOMAIN
-NEXT_PUBLIC_STORE_NAME="${STORE_NAME:-Parkway Pharmacy}"
 POSTGRES_PASSWORD=$(openssl rand -hex 24)
 JWT_SECRET=$jwt_secret
 ANON_KEY=$(jwt anon)
@@ -49,15 +49,35 @@ chmod 600 "$ENV_FILE"
 ln -sf "$ENV_FILE" "$APP_DIR/.env"
 
 if [ "${WITH_CADDY:-0}" = "1" ]; then
-  cat > /etc/caddy/sites/shiftly.caddy <<EOF
+  # Business subdomains get certificates on demand, but only for businesses that exist: Caddy asks Shiftly first.
+  # That is a global option, so it lives in its own file that sorts before the sites (it changes nothing for
+  # sites that don't use on-demand certificates).
+  cat > /etc/caddy/sites/00-on-demand-tls.caddy <<CADDY
+# Written by shiftly/deploy/setup-server.sh. Global options: must be the first block Caddy reads.
+{
+	on_demand_tls {
+		ask http://127.0.0.1:3600/tls-check
+	}
+}
+CADDY
+  cat > /etc/caddy/sites/shiftly.caddy <<CADDY
 # Shiftly: written by shiftly/deploy/setup-server.sh. The stack's own gateway is on 127.0.0.1:3600.
+# The bare domain is the platform admin; each business is a subdomain (parkway.$DOMAIN).
 $DOMAIN {
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:3600
 }
 
+*.$DOMAIN {
+	tls {
+		on_demand
+	}
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3600
+}
+
 # Fingerprint terminals often only speak plain HTTP, so their push endpoints also answer on port 80.
-http://$DOMAIN {
+http://$DOMAIN, http://*.$DOMAIN {
 	handle /iclock/* {
 		reverse_proxy 127.0.0.1:3600
 	}
@@ -65,7 +85,7 @@ http://$DOMAIN {
 		redir https://{host}{uri} permanent
 	}
 }
-EOF
+CADDY
   # Other sites share this Caddy: only reload a configuration that validates.
   caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
   systemctl reload caddy
