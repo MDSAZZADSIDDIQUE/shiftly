@@ -50,7 +50,8 @@ export default async function LeavePage() {
     return (
       <li key={l.id} className="rise-in hoverable group/row flex flex-wrap items-center gap-3 rounded-xl bg-muted/45 p-3" style={{ borderLeft: `3px solid ${e.color}` }}>
         <DateBadge date={l.start_date} />
-        <PersonAvatar name={e.full_name} color={e.color} size="sm" />
+        {/* The date tile and coloured edge are enough on a phone; the avatar would squeeze the details. */}
+        <span className="max-sm:hidden"><PersonAvatar name={e.full_name} color={e.color} size="sm" /></span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">{e.full_name}</p>
           <p className="text-xs text-muted-foreground">
@@ -59,10 +60,13 @@ export default async function LeavePage() {
             {l.note && ` · ${l.note}`}
           </p>
         </div>
-        <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium capitalize', TYPE_STYLE[l.leave_type])}>{l.leave_type}</span>
-        {actions ?? (
-          <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium capitalize', l.status === 'approved' ? 'tone-emerald' : 'tone-zinc')}>{l.status}</span>
-        )}
+        {/* On a phone the tags and buttons drop below the details, lined up with the text. */}
+        <div className="flex flex-wrap items-center gap-2 max-sm:w-full max-sm:pl-14">
+          <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium capitalize', TYPE_STYLE[l.leave_type])}>{l.leave_type}</span>
+          {actions ?? (
+            <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium capitalize', l.status === 'approved' ? 'tone-emerald' : 'tone-zinc')}>{l.status}</span>
+          )}
+        </div>
       </li>
     )
   }

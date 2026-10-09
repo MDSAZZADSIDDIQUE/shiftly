@@ -164,7 +164,8 @@ export default async function AttendancePage({ searchParams }: PageProps<'/atten
                     <Who r={r} />
                     <Paid r={r} date={date} />
                   </div>
-                  <Worked r={r} now={now} />
+                  {/* The table shows a dash for nobody-in; on a card that is just an empty line. */}
+                  {((r.s?.worked_seconds ?? 0) > 0 || r.open) && <Worked r={r} now={now} />}
                   <Sessions r={r} date={date} now={now} />
                 </li>
               ))}

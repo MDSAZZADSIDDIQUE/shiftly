@@ -121,7 +121,7 @@ export default async function EmployeePage({ params }: PageProps<'/employees/[id
             {days.length === 0 ? (
               <EmptyState icon={<CalendarCheckIcon />} title="No attendance yet" compact>Nothing in the last 30 days.</EmptyState>
             ) : (
-              <Table>
+              <Table className="max-sm:[&_td]:px-1 max-sm:[&_th]:px-1">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
@@ -136,14 +136,19 @@ export default async function EmployeePage({ params }: PageProps<'/employees/[id
                     <TableRow key={d.work_date}>
                       <TableCell>
                         <Link href={`/attendance?date=${d.work_date}`} className="hover:underline">
-                          {prettyDate(d.work_date, 'EEE d MMM')}
+                          <span className="sm:hidden">{prettyDate(d.work_date, 'EEE d/M')}</span>
+                          <span className="max-sm:hidden">{prettyDate(d.work_date, 'EEE d MMM')}</span>
                         </Link>
                       </TableCell>
                       <TableCell className="tabular-nums">{londonTime(d.first_in)}</TableCell>
                       <TableCell className="tabular-nums">
                         {d.is_clocked_in ? <span className="text-success-text">working</span> : d.missed_clock_out ? <span className="text-warning-text">missing</span> : londonTime(d.last_out)}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{formatDuration(d.worked_seconds)}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {/* Seconds don't fit beside Paid on a phone. */}
+                        <span className="sm:hidden">{formatMinutes(Math.floor(d.worked_seconds / 60))}</span>
+                        <span className="max-sm:hidden">{formatDuration(d.worked_seconds)}</span>
+                      </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatMinutes(d.paid_minutes)}
                         {d.approved_minutes != null && <span className="tone-brass ml-1.5 rounded-full px-1.5 py-px text-[0.65rem]">set</span>}

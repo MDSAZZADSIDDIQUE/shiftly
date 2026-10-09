@@ -70,7 +70,7 @@ export default async function WagesPage({ searchParams }: PageProps<'/wages'>) {
       />
 
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="surface flex flex-wrap gap-1 rounded-xl p-1">
+        <div className="surface grid grid-cols-2 gap-1 rounded-xl p-1 sm:flex sm:flex-wrap">
           {presets(today).map((p) => (
             <Button
               key={p.label}

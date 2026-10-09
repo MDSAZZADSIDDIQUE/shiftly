@@ -228,7 +228,7 @@ export default async function MePage() {
           </div>
           {(todayShifts.length > 0 || workedToday) && (
             <div className="border-t px-4 pt-4 pb-3 sm:px-5">
-              <DayTimeline date={today} employees={[employee]} sessions={sessions} shifts={todayShifts} nowIso={nowIso} isToday
+              <DayTimeline date={today} employees={[employee]} sessions={sessions} shifts={todayShifts} nowIso={nowIso} isToday showNames={false}
                 openHours={todayHours} placeWord={business.place_word} />
             </div>
           )}

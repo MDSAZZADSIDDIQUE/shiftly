@@ -79,17 +79,20 @@ export default async function DevicesPage() {
                           {d.last_ip && ` · ${d.last_ip}`}
                         </p>
                       </div>
-                      {online ? (
-                        <span className="tone-emerald inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"><WifiIcon className="size-3" /> Online</span>
-                      ) : (
-                        <span className="tone-zinc inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium">
-                          <WifiOffIcon className="size-3" /> {d.last_seen_at ? `Seen ${formatDistanceToNow(new Date(d.last_seen_at))} ago` : 'Never connected'}
-                        </span>
-                      )}
-                      {!d.enabled && <span className="tone-amber rounded-full px-2 py-0.5 text-xs font-medium">Waiting for approval</span>}
-                      {!d.branch_id && branches.length > 1 && (
-                        <span className="tone-amber rounded-full px-2 py-0.5 text-xs font-medium">Which {business.branch_word}?</span>
-                      )}
+                      {/* Below the name on a phone, so the name and serial keep the full width. */}
+                      <div className="flex flex-wrap items-center gap-2 max-sm:w-full max-sm:pl-14">
+                        {online ? (
+                          <span className="tone-emerald inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"><WifiIcon className="size-3" /> Online</span>
+                        ) : (
+                          <span className="tone-zinc inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium">
+                            <WifiOffIcon className="size-3" /> {d.last_seen_at ? `Seen ${formatDistanceToNow(new Date(d.last_seen_at))} ago` : 'Never connected'}
+                          </span>
+                        )}
+                        {!d.enabled && <span className="tone-amber rounded-full px-2 py-0.5 text-xs font-medium">Waiting for approval</span>}
+                        {!d.branch_id && branches.length > 1 && (
+                          <span className="tone-amber rounded-full px-2 py-0.5 text-xs font-medium">Which {business.branch_word}?</span>
+                        )}
+                      </div>
                     </div>
                     <ActionForm action={updateDevice.bind(null, d.id)} successMessage="Saved" className="mt-3 flex flex-wrap items-center gap-3 border-t pt-3">
                       <Input name="name" defaultValue={d.name ?? ''} placeholder="Terminal name, e.g. Front door" aria-label="Terminal name" className="min-w-40 flex-1" />

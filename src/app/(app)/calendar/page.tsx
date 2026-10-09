@@ -15,6 +15,7 @@ import type { CalendarDay, DailySummary, Employee, LeaveRequest, Shift } from '@
 import { TZDate } from '@date-fns/tz'
 import { AddShiftForm } from './add-shift-form'
 import { CopyWeekDialog, FillRotaDialog } from './bulk-rota'
+import { DayPending, RevealDay } from './day-feedback'
 import { EditShiftDialog } from './edit-shift-dialog'
 
 export const metadata: Metadata = { title: 'Rota' }
@@ -153,11 +154,14 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
 
       <div className="grid grid-cols-1 gap-6 2xl:grid-cols-[1fr_360px]">
         <div className="surface rise-in min-w-0 rounded-2xl p-2 sm:p-3">
-          {/* Sideways scrolling only (phones); never a vertical scrollbar inside the card. */}
+          {/* Phones get a compact month (a dot per person); wider screens get names and times in each day. */}
           <div className="overflow-x-auto overflow-y-hidden">
-            <div className="grid min-w-[700px] grid-cols-7 gap-1.5">
+            <div className="grid grid-cols-7 gap-1 sm:min-w-[700px] sm:gap-1.5">
               {WEEKDAYS.map((d) => (
-                <div key={d} className="px-1.5 pb-1 text-xs font-semibold text-muted-foreground">{d}</div>
+                <div key={d} className="pb-1 text-center text-xs font-semibold text-muted-foreground sm:px-1.5 sm:text-left">
+                  <span className="sm:hidden">{d.slice(0, 1)}</span>
+                  <span className="max-sm:hidden">{d}</span>
+                </div>
               ))}
               {days.map((day) => {
                 const d = cal.get(day)
@@ -172,22 +176,26 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
                     scroll={false}
                     // Diagonal ripple: row + column, so the grid fills in like a wave.
                     className={cn(
-                      'rise-in group relative flex min-h-32 flex-col gap-1.5 overflow-hidden rounded-xl border p-2 text-left transition hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md',
+                      'rise-in group relative flex min-h-14 flex-col gap-1 overflow-hidden rounded-lg border p-1 text-left transition hover:border-primary/50 sm:min-h-32 sm:gap-1.5 sm:rounded-xl sm:p-2 sm:hover:-translate-y-0.5 sm:hover:shadow-md',
                       !inMonth && 'opacity-40',
                       day === selected && 'border-primary ring-2 ring-primary/30'
                     )}
                   >
                     <span className="absolute inset-0 bg-primary" style={{ opacity: intensity > 0 ? 0.03 + intensity * 0.13 : 0 }} />
+                    <DayPending />
                     <span className="relative flex items-center justify-between gap-1">
                       <span
                         className={cn(
-                          'flex size-7 items-center justify-center rounded-full text-sm font-semibold tabular-nums',
+                          'flex size-6 items-center justify-center rounded-full text-xs font-semibold tabular-nums sm:size-7 sm:text-sm',
                           day === today && 'bg-primary text-primary-foreground shadow-sm'
                         )}
                       >
                         {Number(day.slice(8))}
                       </span>
-                      <span className="flex items-center gap-1.5">
+                      {d && d.on_leave > 0 && (
+                        <PalmtreeIcon className="size-2.5 shrink-0 text-warning-text sm:hidden" aria-label={`${d.on_leave} on holiday`} />
+                      )}
+                      <span className="flex items-center gap-1.5 max-sm:hidden">
                         {d && d.on_leave > 0 && (
                           <span className="tone-amber flex items-center gap-0.5 rounded-full px-1.5 py-px text-[0.68rem] font-medium" title={`${d.on_leave} on holiday`}>
                             <PalmtreeIcon className="size-3" />
@@ -204,7 +212,12 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
                         )}
                       </span>
                     </span>
-                    <span className="relative grid gap-1">
+                    <span className="relative flex flex-wrap gap-0.5 px-0.5 sm:hidden" aria-label={`${chips.length} ${isPast ? 'worked' : 'on the rota'}`}>
+                      {chips.slice(0, 8).map((c) => (
+                        <span key={c.id} className="size-1.5 rounded-full" style={{ backgroundColor: c.employee.color }} />
+                      ))}
+                    </span>
+                    <span className="relative grid gap-1 max-sm:hidden">
                       {chips.slice(0, 3).map((c) => (
                         <span
                           key={c.id}
@@ -237,14 +250,19 @@ export default async function CalendarPage({ searchParams }: PageProps<'/calenda
               </span>
               More hours
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 max-sm:hidden">
               <span className="h-3 w-5 rounded-sm border-l-[3px] border-l-primary bg-muted" /> Past days: hours worked · Today on: shift times
+            </span>
+            <span className="flex items-center gap-1.5 sm:hidden">
+              <span className="size-1.5 rounded-full bg-primary" /> A dot per person working · tap a day for details
             </span>
             <span className="flex items-center gap-1.5"><PalmtreeIcon className="size-3.5 text-warning-text" /> On holiday</span>
           </div>
         </div>
 
-        <div className="grid h-fit gap-6">
+        {/* Clears the sticky phone header when scrolled to. */}
+        <div className="grid h-fit scroll-mt-20 gap-6 lg:scroll-mt-6">
+          {isDateString(params.day) && <RevealDay key={selected} />}
           <Panel
             title={prettyDate(selected, 'EEEE d MMMM')}
             description={`${dayShifts.length} shift${dayShifts.length === 1 ? '' : 's'} · ${formatMinutes(cal.get(selected)?.scheduled_minutes ?? 0)} scheduled`}
