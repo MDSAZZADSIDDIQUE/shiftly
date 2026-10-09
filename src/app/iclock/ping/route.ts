@@ -1,8 +1,7 @@
-import { clientIp, logRequest, serialFrom, text, touchDevice } from '@/lib/adms'
+import { clientIp, serialFrom, text, touchDevice } from '@/lib/adms'
 
-// The terminal polls here for commands. We have none to send, so this doubles as a heartbeat.
+// Push 3.x heartbeat. Not logged: it arrives every few seconds.
 export async function GET(request: Request) {
-  logRequest(request)
   const serial = serialFrom(request)
   if (!serial) return text('ERROR: missing SN', 400)
 

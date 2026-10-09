@@ -116,6 +116,8 @@ SERVER=ubuntu@<vm> SSH_KEY=~/.ssh/<key> RESEED=1 bash deploy/deploy.sh
 
 Any ZKTeco model with **ADMS / Cloud Server** support (Wi-Fi or 4G versions) works. Fingerprint templates stay on the terminal; only "user 12 scanned at 09:01:33" reaches the server. Unknown terminals are recorded but ignored until the manager ticks **Accept scans**.
 
+Access-control terminals such as the F22 use push protocol 3.x (`/iclock/registry`, `/iclock/push`, `/iclock/ping`) and upload door events as `table=rtlog`. Only successful identifications become punches; door state, alarms and denied scans are skipped. Every terminal request is logged as an `[iclock]` line (`docker compose logs app | grep iclock` on the server), and uploads in a table Shiftly doesn't know are refused so the terminal keeps them.
+
 The push endpoints `/iclock/*` also answer on plain HTTP (port 80) because many terminals cannot do HTTPS. Everything else redirects to HTTPS.
 
 ### UK GDPR

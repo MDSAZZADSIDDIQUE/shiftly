@@ -1,4 +1,5 @@
 import 'server-only'
+import { createHash } from 'node:crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
@@ -7,6 +8,12 @@ import { createAdminClient } from '@/lib/supabase/admin'
  *   POST /iclock/cdata?SN=...&table=ATTLOG   attendance records, one per line
  *   GET  /iclock/getrequest?SN=...       asks for pending commands (none for now)
  *   POST /iclock/devicecmd?SN=...        command results
+ * Access-control terminals (F22, SpeedFace, inBio...) speak push protocol 3.x on top of that:
+ *   POST /iclock/registry?SN=...         registers, we reply with a RegistryCode
+ *   GET  /iclock/push?SN=...             asks for upload options
+ *   GET  /iclock/ping?SN=...             heartbeat
+ *   POST /iclock/cdata?SN=...&table=rtlog    door events, key=value pairs, one event per line
+ *   POST /iclock/querydata?SN=...        answers to data queries (we send none)
  * Fingerprint templates never leave the terminal; only "user 12 punched at 09:01:33" is sent.
  */
 
@@ -28,6 +35,61 @@ export function parseAttLog(body: string): AttLogRow[] {
   return rows
 }
 
+/**
+ * rtlog events that mean "this person was identified and let through". Everything else (door
+ * state changes, alarms, "too short punch interval", unregistered card, denied...) is not a punch.
+ */
+const RTLOG_ACCESS_EVENTS = new Set([
+  '0', // normal verify open
+  '1', // verify during normal open time zone
+  '2', // first-personnel open
+  '3', // multi-personnel open
+  '14', // fingerprint open
+  '15', // multi-personnel open (fingerprint)
+  '16', // fingerprint during normal open time zone
+  '17', // card plus fingerprint open
+  '18', // first-personnel open (fingerprint)
+  '19', // first-personnel open (card plus fingerprint)
+])
+
+/** rtlog lines: time=YYYY-MM-DD HH:MM:SS \t pin=12 \t event=0 \t verifytype=1 \t ... */
+export function parseRtLog(body: string): { rows: AttLogRow[]; skipped: number } {
+  const rows: AttLogRow[] = []
+  let skipped = 0
+  for (const line of body.split(/\r?\n/)) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    const fields = new Map<string, string>()
+    for (const part of trimmed.split('\t')) {
+      const eq = part.indexOf('=')
+      if (eq > 0) fields.set(part.slice(0, eq).trim().toLowerCase(), part.slice(eq + 1).trim())
+    }
+    const userId = fields.get('pin')
+    const time = fields.get('time')
+    if (!userId || userId === '0' || !time || !TIME_RE.test(time) || !RTLOG_ACCESS_EVENTS.has(fields.get('event') ?? '')) {
+      skipped++
+      continue
+    }
+    rows.push({ user_id: userId, time, verify: fields.get('verifytype') ?? null, raw: trimmed })
+  }
+  return { rows, skipped }
+}
+
+/** Uploads that carry nothing we keep (enrolment, photos, door state, logs). Acknowledged and dropped. */
+export const IGNORED_TABLES = new Set([
+  'OPERLOG',
+  'ATTPHOTO',
+  'BIODATA',
+  'USERINFO',
+  'FINGERTMP',
+  'FACE',
+  'USERPIC',
+  'BIOPHOTO',
+  'ERRORLOG',
+  'OPTIONS',
+  'RTSTATE',
+])
+
 export function handshakeResponse(serial: string) {
   return [
     `GET OPTION FROM: ${serial}`,
@@ -42,6 +104,46 @@ export function handshakeResponse(serial: string) {
     'Realtime=1',
     'Encrypt=None',
   ].join('\n')
+}
+
+/** A stable code per terminal; the terminal only echoes it back, it is not a secret. */
+export function registryResponse(serial: string) {
+  const code = createHash('sha256').update(`shiftly:${serial}`).digest('hex').slice(0, 10)
+  return `RegistryCode=${code}`
+}
+
+export function pushOptionsResponse() {
+  return [
+    'ServerVersion=3.1.2',
+    'ServerName=ADMS',
+    'PushVersion=3.1.2',
+    'ErrorDelay=30',
+    'RequestDelay=10',
+    'TransTimes=00:00\t14:05',
+    'TransInterval=1',
+    'TransTables=User\tTransaction',
+    'Realtime=1',
+    'TimeoutSec=10',
+  ].join('\n')
+}
+
+/**
+ * One log line per terminal request, so a test with a real terminal shows exactly what it sent.
+ * Bodies are cut short: enrolment uploads can carry names and are large.
+ */
+export function logRequest(request: Request, body?: string) {
+  const url = new URL(request.url)
+  console.log(
+    '[iclock]',
+    JSON.stringify({
+      method: request.method,
+      path: url.pathname,
+      query: url.search,
+      ip: clientIp(request),
+      ua: request.headers.get('user-agent'),
+      ...(body !== undefined && { bytes: body.length, body: body.slice(0, 200) }),
+    }),
+  )
 }
 
 export function text(body: string, status = 200) {
