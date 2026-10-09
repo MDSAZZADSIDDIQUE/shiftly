@@ -11,7 +11,7 @@ import {
   TimerIcon,
   XIcon,
 } from 'lucide-react'
-import { HoursChart } from '@/components/charts'
+import { HoursChart } from '@/components/lazy-charts'
 import { ActionButton } from '@/components/forms'
 import { LiveRefresh } from '@/components/live'
 import { EmptyState, PageHeader, Panel, StatCard } from '@/components/people'

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ViewTransition } from 'react'
 import { AlarmClockIcon, CalendarClockIcon, ClockIcon, FingerprintIcon, PalmtreeIcon, TimerIcon, UserPlusIcon, UsersIcon } from 'lucide-react'
-import { HoursChart } from '@/components/charts'
+import { HoursChart } from '@/components/lazy-charts'
 import { CountUp } from '@/components/count-up'
 import { PunchMenu, WorkingCard } from '@/components/dashboard-cards'
 import { LiveRefresh } from '@/components/live'
