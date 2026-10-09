@@ -27,9 +27,9 @@ export function BranchSwitcher({
         onChange={(e) => startTransition(() => selectBranch(e.target.value))}
         className="w-full appearance-none truncate bg-transparent py-1.5 pr-3 pl-8 outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <option value="">All {plural(branchWord)}</option>
+        <option value="" className="bg-sidebar text-sidebar-foreground">All {plural(branchWord)}</option>
         {branches.map((b) => (
-          <option key={b.id} value={b.id}>
+          <option key={b.id} value={b.id} className="bg-sidebar text-sidebar-foreground">
             {b.name}
           </option>
         ))}
