@@ -14,7 +14,21 @@
 select setseed(0.2026);  -- same "random" jitter every time
 
 -- ---------------------------------------------------------------------------
--- Sign-in accounts. The first account becomes the manager (handle_new_user), so the manager goes first.
+-- The business (parkway.<root domain>) and its four branches. The team below works at Dagenham East.
+-- TODO: the other three branch names are placeholders until Parkway confirms them.
+-- ---------------------------------------------------------------------------
+
+insert into public.businesses (id, slug, name, place_word, branch_word) values
+  ('44444444-0000-0000-0000-000000000001', 'parkway', 'Parkway Pharmacy', 'pharmacy', 'branch');
+
+insert into public.branches (id, business_id, name, opening_hours) values
+  ('33333333-0000-0000-0000-000000000001', '44444444-0000-0000-0000-000000000001', 'Dagenham East', '{"1":["09:00","18:30"],"2":["09:00","18:30"],"3":["09:00","18:30"],"4":["09:00","18:30"],"5":["09:00","18:30"],"6":["09:00","17:30"]}'),
+  ('33333333-0000-0000-0000-000000000002', '44444444-0000-0000-0000-000000000001', 'Branch 2', '{"1":["09:00","18:30"],"2":["09:00","18:30"],"3":["09:00","18:30"],"4":["09:00","18:30"],"5":["09:00","18:30"],"6":["09:00","17:30"]}'),
+  ('33333333-0000-0000-0000-000000000003', '44444444-0000-0000-0000-000000000001', 'Branch 3', '{"1":["09:00","18:30"],"2":["09:00","18:30"],"3":["09:00","18:30"],"4":["09:00","18:30"],"5":["09:00","18:30"],"6":["09:00","17:30"]}'),
+  ('33333333-0000-0000-0000-000000000004', '44444444-0000-0000-0000-000000000001', 'Branch 4', '{"1":["09:00","18:30"],"2":["09:00","18:30"],"3":["09:00","18:30"],"4":["09:00","18:30"],"5":["09:00","18:30"],"6":["09:00","17:30"]}');
+
+-- ---------------------------------------------------------------------------
+-- Sign-in accounts. app_metadata puts each one in the business with its role (handle_new_user).
 -- ---------------------------------------------------------------------------
 
 do $$
@@ -24,12 +38,12 @@ declare
 begin
   for v_user in
     select * from (values
-      ('00000000-0000-0000-0000-00000000a001'::uuid, 'sarah.mitchell@example.co.uk', 'Sarah Mitchell', 1),
-      ('00000000-0000-0000-0000-00000000a002'::uuid, 'amira@example.co.uk',          'Amira Khan',     2),
-      ('00000000-0000-0000-0000-00000000a003'::uuid, 'tom@example.co.uk',            'Tom Reed',       3),
-      ('00000000-0000-0000-0000-00000000a004'::uuid, 'priya@example.co.uk',          'Priya Patel',    4),
-      ('00000000-0000-0000-0000-00000000a005'::uuid, 'chloe@example.co.uk',          'Chloe Davies',   5)
-    ) as u(id, email, full_name, ord)
+      ('00000000-0000-0000-0000-00000000a001'::uuid, 'sarah.mitchell@example.co.uk', 'Sarah Mitchell', 'manager',  1),
+      ('00000000-0000-0000-0000-00000000a002'::uuid, 'amira@example.co.uk',          'Amira Khan',     'employee', 2),
+      ('00000000-0000-0000-0000-00000000a003'::uuid, 'tom@example.co.uk',            'Tom Reed',       'employee', 3),
+      ('00000000-0000-0000-0000-00000000a004'::uuid, 'priya@example.co.uk',          'Priya Patel',    'employee', 4),
+      ('00000000-0000-0000-0000-00000000a005'::uuid, 'chloe@example.co.uk',          'Chloe Davies',   'employee', 5)
+    ) as u(id, email, full_name, role, ord)
     order by ord
   loop
     insert into auth.users (
@@ -39,7 +53,8 @@ begin
     ) values (
       '00000000-0000-0000-0000-000000000000', v_user.id, 'authenticated', 'authenticated', v_user.email,
       extensions.crypt(v_password, extensions.gen_salt('bf')), now(),
-      '{"provider":"email","providers":["email"]}', jsonb_build_object('full_name', v_user.full_name),
+      jsonb_build_object('provider', 'email', 'providers', array['email'], 'business_id', '44444444-0000-0000-0000-000000000001', 'role', v_user.role),
+      jsonb_build_object('full_name', v_user.full_name),
       now() - interval '60 days', now(),
       '', '', '', ''
     );
@@ -54,28 +69,24 @@ begin
 end;
 $$;
 
--- Don't rely on insertion order alone for the roles.
-update public.profiles set role = 'manager' where id = '00000000-0000-0000-0000-00000000a001';
-update public.profiles set role = 'employee' where id <> '00000000-0000-0000-0000-00000000a001';
-
 -- ---------------------------------------------------------------------------
 -- Team and pay. Assistants follow the UK National Living Wage (£12.21 → £12.71 on 1 April 2026; 18–20: £10.00 → £10.85);
 -- pharmacists, the trainee and the technician are paid above it.
 -- ---------------------------------------------------------------------------
 
-insert into public.employees (id, user_id, full_name, job_title, device_user_id, daily_minutes, color, email, phone, active, started_on) values
-  ('11111111-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000a002', 'Amira Khan',       'Pharmacist',                   '1',  570, '#4f6d8f', 'amira@example.co.uk',  '07700 900101', true,  '2024-03-01'),
-  ('11111111-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000a003', 'Tom Reed',         'Dispenser',                    '2',  480, '#5f8a6e', 'tom@example.co.uk',    '07700 900102', true,  '2025-01-15'),
-  ('11111111-0000-0000-0000-000000000003', '00000000-0000-0000-0000-00000000a004', 'Priya Patel',      'Trainee pharmacist',           '3',  480, '#b8873a', 'priya@example.co.uk',  '07700 900103', true,  '2025-09-20'),
-  ('11111111-0000-0000-0000-000000000004', null,                                   'Jack Wilson',      'Delivery driver',              '4',  360, '#b5583f', 'jack@example.co.uk',   '07700 900104', true,  '2025-06-02'),
-  ('11111111-0000-0000-0000-000000000005', '00000000-0000-0000-0000-00000000a005', 'Chloe Davies',     'Medicines counter assistant',  '5',  300, '#3f8a8c', 'chloe@example.co.uk',  '07700 900105', true,  '2026-02-10'),
-  ('11111111-0000-0000-0000-000000000006', null,                                   'Mohammed Hussain', 'Saturday counter assistant',   '6',  240, '#7a5c8e', null,                   null,           true,  '2026-05-01'),
-  ('11111111-0000-0000-0000-000000000007', null,                                   'Grace O''Connor',  'Pharmacist',                   '7',  570, '#a8606f', 'grace@example.co.uk',  '07700 900107', true,  '2023-08-14'),
-  ('11111111-0000-0000-0000-000000000008', null,                                   'Daniel Okafor',    'Pharmacy technician',          '8',  480, '#6b7a3c', 'daniel@example.co.uk', '07700 900108', true,  '2025-11-03'),
-  ('11111111-0000-0000-0000-000000000009', null,                                   'Ellie Thompson',   'Dispensing assistant',         '9',  240, '#8a6a4f', 'ellie@example.co.uk',  '07700 900109', true,  '2026-01-05'),
-  ('11111111-0000-0000-0000-000000000010', null,                                   'Ryan Clarke',      'Counter assistant',            '10', 240, '#c07a3e', 'ryan@example.co.uk',   null,           true,  '2026-06-20'),
-  ('11111111-0000-0000-0000-000000000011', null,                                   'Sophie Bennett',   'Healthcare counter assistant', '11', 360, '#4f6d8f', 'sophie@example.co.uk', '07700 900111', true,  '2024-10-07'),
-  ('11111111-0000-0000-0000-000000000012', null,                                   'Liam Harris',      'Delivery driver',              '12', 240, '#5f8a6e', 'liam@example.co.uk',   null,           false, '2025-04-12');
+insert into public.employees (business_id, branch_id, id, user_id, full_name, job_title, device_user_id, daily_minutes, color, email, phone, active, started_on) values
+  ('44444444-0000-0000-0000-000000000001', '33333333-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000a002', 'Amira Khan',       'Pharmacist',                   '1',  570, '#4f6d8f', 'amira@example.co.uk',  '07700 900101', true,  '2024-03-01'),
+  ('44444444-0000-0000-0000-000000000001', '33333333-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000a003', 'Tom Reed',         'Dispenser',                    '2',  480, '#5f8a6e', 'tom@example.co.uk',    '07700 900102', true,  '2025-01-15'),
+  ('44444444-0000-0000-0000-000000000001', '33333333-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000003', '00000000-0000-0000-0000-00000000a004', 'Priya Patel',      'Trainee pharmacist',           '3',  480, '#b8873a', 'priya@example.co.uk',  '07700 900103', true,  '2025-09-20'),
+  ('44444444-0000-0000-0000-000000000001', '33333333-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000004', null,                                   'Jack Wilson',      'Delivery driver',              '4',  360, '#b5583f', 'jack@example.co.uk',   '07700 900104', true,  '2025-06-02'),
+  ('44444444-0000-0000-0000-000000000001', '33333333-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000005', '00000000-0000-0000-0000-00000000a005', 'Chloe Davies',     'Medicines counter assistant',  '5',  300, '#3f8a8c', 'chloe@example.co.uk',  '07700 900105', true,  '2026-02-10'),
+  ('44444444-0000-0000-0000-000000000001', '33333333-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000006', null,                                   'Mohammed Hussain', 'Saturday counter assistant',   '6',  240, '#7a5c8e', null,                   null,           true,  '2026-05-01'),
+  ('44444444-0000-0000-0000-000000000001', '33333333-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000007', null,                                   'Grace O''Connor',  'Pharmacist',                   '7',  570, '#a8606f', 'grace@example.co.uk',  '07700 900107', true,  '2023-08-14'),
+  ('44444444-0000-0000-0000-000000000001', '33333333-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000008', null,                                   'Daniel Okafor',    'Pharmacy technician',          '8',  480, '#6b7a3c', 'daniel@example.co.uk', '07700 900108', true,  '2025-11-03'),
+  ('44444444-0000-0000-0000-000000000001', '33333333-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000009', null,                                   'Ellie Thompson',   'Dispensing assistant',         '9',  240, '#8a6a4f', 'ellie@example.co.uk',  '07700 900109', true,  '2026-01-05'),
+  ('44444444-0000-0000-0000-000000000001', '33333333-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000010', null,                                   'Ryan Clarke',      'Counter assistant',            '10', 240, '#c07a3e', 'ryan@example.co.uk',   null,           true,  '2026-06-20'),
+  ('44444444-0000-0000-0000-000000000001', '33333333-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000011', null,                                   'Sophie Bennett',   'Healthcare counter assistant', '11', 360, '#4f6d8f', 'sophie@example.co.uk', '07700 900111', true,  '2024-10-07'),
+  ('44444444-0000-0000-0000-000000000001', '33333333-0000-0000-0000-000000000001', '11111111-0000-0000-0000-000000000012', null,                                   'Liam Harris',      'Delivery driver',              '12', 240, '#5f8a6e', 'liam@example.co.uk',   null,           false, '2025-04-12');
 
 insert into public.pay_rates (employee_id, hourly_rate_pence, effective_from) values
   ('11111111-0000-0000-0000-000000000010', 1085, '2026-06-20'),
@@ -105,9 +116,9 @@ insert into public.pay_rates (employee_id, hourly_rate_pence, effective_from) va
 -- Fingerprint terminals: the pharmacy's own (enabled) and one that contacted the server but hasn't been approved.
 -- ---------------------------------------------------------------------------
 
-insert into public.devices (id, serial_number, name, enabled, last_seen_at, last_ip, created_at) values
-  ('22222222-0000-0000-0000-000000000001', 'CQZ7232460123', 'Dispensary terminal', true,  now() - interval '25 seconds', '81.2.69.142',   now() - interval '70 days'),
-  ('22222222-0000-0000-0000-000000000002', 'BOCK194960012', null,                  false, now() - interval '3 days',     '86.140.12.77', now() - interval '3 days');
+insert into public.devices (business_id, branch_id, id, serial_number, name, enabled, last_seen_at, last_ip, created_at) values
+  ('44444444-0000-0000-0000-000000000001', '33333333-0000-0000-0000-000000000001', '22222222-0000-0000-0000-000000000001', 'CQZ7232460123', 'Dispensary terminal', true,  now() - interval '25 seconds', '81.2.69.142',   now() - interval '70 days'),
+  ('44444444-0000-0000-0000-000000000001', null, '22222222-0000-0000-0000-000000000002', 'BOCK194960012', null,                  false, now() - interval '3 days',     '86.140.12.77', now() - interval '3 days');
 
 -- ---------------------------------------------------------------------------
 -- Usual weeks. weekday is ISO (1 = Monday); closed on Sundays. Grace has two rows because Saturday is shorter.
@@ -130,8 +141,8 @@ insert into seed_pattern values
   ('11111111-0000-0000-0000-000000000011', array[1,2,3],     '10:00', 360, null),
   ('11111111-0000-0000-0000-000000000012', array[2,4,6],     '12:00', 240, -35);
 
-insert into public.shift_patterns (employee_id, weekday, start_time, end_time)
-select p.employee_id, wd, p.start_time, p.start_time + make_interval(mins => p.minutes)
+insert into public.shift_patterns (employee_id, branch_id, weekday, start_time, end_time)
+select p.employee_id, '33333333-0000-0000-0000-000000000001', wd, p.start_time, p.start_time + make_interval(mins => p.minutes)
 from seed_pattern p, unnest(p.days) as wd
 where p.until_day is null;
 
@@ -169,9 +180,10 @@ from seed_today t, (values
 create temp table seed_late as
 select (now() at time zone 'Europe/London')::time between '08:30' and '17:30' as enabled;
 
-insert into public.shifts (employee_id, starts_at, ends_at)
+insert into public.shifts (employee_id, branch_id, starts_at, ends_at)
 select
   p.employee_id,
+  '33333333-0000-0000-0000-000000000001',
   (d.day + p.start_time) at time zone 'Europe/London',
   (d.day + p.start_time) at time zone 'Europe/London' + make_interval(mins => p.minutes)
 from seed_pattern p
@@ -186,8 +198,8 @@ where (p.until_day is null or d.day <= t.today + p.until_day)
     where lr.employee_id = p.employee_id and lr.status = 'approved' and d.day between lr.start_date and lr.end_date
   );
 
-insert into public.shifts (employee_id, starts_at, ends_at, note)
-select '11111111-0000-0000-0000-000000000009', s, s + interval '4 hours', 'Covering for Sophie'
+insert into public.shifts (employee_id, branch_id, starts_at, ends_at, note)
+select '11111111-0000-0000-0000-000000000009', '33333333-0000-0000-0000-000000000001', s, s + interval '4 hours', 'Covering for Sophie'
 from seed_late l, lateral (select date_bin('5 minutes', now() - interval '25 minutes', '2000-01-01') as s) x
 where l.enabled;
 
@@ -256,14 +268,14 @@ begin
       insert into public.punches (employee_id, punched_at, source)
       values (v_punch.employee_id, v_punch.punched_at, 'manual');
     else
-      insert into public.punches (device_id, device_user_id, punched_at, source, verify_mode, raw)
-      values ('22222222-0000-0000-0000-000000000001', v_punch.device_user_id, v_punch.punched_at, 'device', '1',
+      insert into public.punches (business_id, device_id, device_user_id, punched_at, source, verify_mode, raw)
+      values ('44444444-0000-0000-0000-000000000001', '22222222-0000-0000-0000-000000000001', v_punch.device_user_id, v_punch.punched_at, 'device', '1',
               v_punch.device_user_id || E'\t' || to_char(v_punch.punched_at at time zone 'Europe/London', 'YYYY-MM-DD HH24:MI:SS') || E'\t0\t1\t0\t0\t0');
     end if;
   end loop;
 
-  insert into public.punches (device_id, device_user_id, punched_at, source, verify_mode, raw)
-  select '22222222-0000-0000-0000-000000000001', '15', p, 'device', '1',
+  insert into public.punches (business_id, device_id, device_user_id, punched_at, source, verify_mode, raw)
+  select '44444444-0000-0000-0000-000000000001', '22222222-0000-0000-0000-000000000001', '15', p, 'device', '1',
          E'15\t' || to_char(p at time zone 'Europe/London', 'YYYY-MM-DD HH24:MI:SS') || E'\t0\t1\t0\t0\t0'
   from (select ((select today from seed_today) - 1 + time '09:12:41') at time zone 'Europe/London' as p) x;
 end;
